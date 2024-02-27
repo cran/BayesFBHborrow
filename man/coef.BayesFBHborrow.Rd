@@ -19,20 +19,17 @@ S3 method for class "BayesFBHborrow", returns the mean posterior values
 for the fixed parameters
 }
 \examples{
-data(piecewise_exp_cc, package = "BayesFBHborrow")
+data(weibull_cc, package = "BayesFBHborrow")
 
-# Set your initial values and hyper parameters
-s <- c(0, quantile(piecewise_exp_cc$tte, c(0.5, 1.0), names = FALSE))
-initial_param <- list("J" = 1, 
-                      "s_r" = s[2], # split points only (length J) 
-                      "mu" = 0, 
-                      "sigma2" = 2,
-                      "lambda" = c(1, 1), 
-                       "beta" = 0)
-               
-# run the MCMC sampler CHANGE THIS BEFORE FINAL CHECK
-out <- BayesFBHborrow(piecewise_exp_cc, NULL, initial_param,
-                iter = 10, warmup_iter = 1)
+# Set your tuning parameters
+tuning_parameters <- list("Jmax" = 5,
+                          "pi_b" = 0.5,
+                          "cprop_beta" = 0.5)
+                          
+# run the MCMC sampler
+out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters, 
+                      initial_values = NULL,
+                      iter = 10, warmup_iter = 1)
 
 # Plot the posterior mean values of the fixed parameters
 coef(out)

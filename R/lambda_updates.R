@@ -110,14 +110,14 @@
 #' @param clam controls neighbor interactions, in range (0, 1)
 #' @param a_lam lambda hyperparameter, default is 0.01
 #' @param b_lam lambda hyperparameter, default is 0.01
-#' @param count_lambda_0 number of total moves for lambda_0
+#' @param lambda_0_count number of total moves for lambda_0
 #' @param lambda_0_move number of accepted moves for lambda_0
 #'
 #' @return list of updated (if accepted) lambda_0 and data.frames, as well as the 
 #' number of accepted moves 
 .lambda_0_MH_cp <- function(df_hist, Y_0, I_0, X_0 = NULL, s, beta_0 = NULL,
                            mu, sigma2,  lambda, lambda_0, tau, bp_0 = 0, J,
-                           clam, a_lam = 0.01, b_lam = 0.01, count_lambda_0 = 0,
+                           clam, a_lam = 0.01, b_lam = 0.01, lambda_0_count = 0,
                            lambda_0_move = 0) {
   ICAR <- .ICAR_calc(s, J, clam) 
   Sigma_s <- ICAR$Sigma_s
@@ -171,10 +171,10 @@
       lambda_0_move <- lambda_0_move + 1
     }
     
-    count_lambda_0 <- count_lambda_0 + 1
+    lambda_0_count <- lambda_0_count + 1
   }
   
-  return(list("lambda_0" = lambda_0, "df_hist" = df_hist, "count_lambda_0" = count_lambda_0, "lambda_0_move" = lambda_0_move))
+  return(list("lambda_0" = lambda_0, "df_hist" = df_hist, "lambda_0_count" = lambda_0_count, "lambda_0_move" = lambda_0_move))
   
 }
 
@@ -194,7 +194,7 @@
 #' @param clam controls neighbor interactions, in range (0, 1)
 #' @param a_lam lambda hyperparameter, default is 0.01
 #' @param b_lam lambda hyperparameter, default is 0.01
-#' @param count_lambda_0 number of total moves for lambda_0
+#' @param lambda_0_count number of total moves for lambda_0
 #' @param lambda_0_move number of accepted moves for lambda_0
 #'
 #' @return list of updated (if accepted) lambda_0 and data.frames, as well as the 
@@ -202,7 +202,7 @@
 .lambda_0_MH_cp_NoBorrow <- function(df_hist, Y_0, I_0, X_0 = NULL, s,
                                     beta_0 = NULL, mu, sigma2,  lambda_0, 
                                     bp_0 = 0, J, clam, a_lam = 0.01,
-                                    b_lam = 0.01, count_lambda_0 = 0,
+                                    b_lam = 0.01, lambda_0_count = 0,
                                     lambda_0_move = 0) {
   ICAR <- .ICAR_calc(s, J, clam) 
   Sigma_s <- ICAR$Sigma_s
@@ -244,10 +244,10 @@
       lambda_0_move <- lambda_0_move + 1
     }
     
-    count_lambda_0 <- count_lambda_0 + 1
+      lambda_0_count <- lambda_0_count + 1
   }
   
-  return(list("lambda_0" = lambda_0, "df_hist" = df_hist, "count_lambda_0" = count_lambda_0, "lambda_0_move" = lambda_0_move))
+  return(list("lambda_0" = lambda_0, "df_hist" = df_hist, "lambda_0_count" = lambda_0_count, "lambda_0_move" = lambda_0_move))
   
 }
 

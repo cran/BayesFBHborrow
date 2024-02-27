@@ -7,9 +7,9 @@
 \method{BayesFBHborrow}{NoBorrow}(
   data,
   data_hist = NULL,
-  initial_parameters,
-  hyperparameters = list(a_sigma = 1, b_sigma = 1, Jmax = 5, clam_smooth = 0.8,
-    cprop_beta = 0.3, phi = 3, pi_b = 0.5),
+  tuning_parameters,
+  initial_values = NULL,
+  hyperparameters = list(a_sigma = 1, b_sigma = 1, phi = 3, clam_smooth = 0.8),
   lambda_hyperparameters = list(a_lambda = 0.01, b_lambda = 0.01),
   iter = 150,
   warmup_iter = 10,
@@ -25,13 +25,15 @@ indicator of the covariate)}
 
 \item{data_hist}{NULL (not used)}
 
-\item{initial_parameters}{list containing the initial values of c("J", "s_r",
-"mu", "sigma2", "lambda", beta")}
+\item{tuning_parameters}{list of "cprop_beta", "Jmax", and "pi_b"}
+
+\item{initial_values}{list containing the initial values of c("J", "s_r",
+"mu", "sigma2", "lambda", beta") (optional)}
 
 \item{hyperparameters}{list containing the hyperparameters c("a_sigma",
-"b_sigma", "Jmax", "clam_smooth", "cprop_beta", "phi", "pi_b"). Default is 
+"b_sigma", "Jmax", "clam_smooth", "cprop_beta", "phi"). Default is 
 list("a_sigma" = 2, "b_sigma" = 2, "Jmax" = 20, "clam_smooth" = 0.8, 
-"cprop_beta" = 0.3, "phi" = 3, "pi_b" = 0.5)}
+"cprop_beta" = 0.3, "phi" = 3)}
 
 \item{lambda_hyperparameters}{contains two hyperparameters ("a" and "b") used for
 the update of lambda, default is c(0.01, 0.01)}
@@ -60,65 +62,19 @@ calls the correct MCMC sampler for time-to-event without Bayesian borrowing.
 \examples{
 set.seed(123)
 # Load the example data and write your initial values and hyper parameters
-# For this example we want to calculate the Effective Historical Sample Size
-# (EHSS), and therefor we need to run the sampler for both with and without
-# borrowing.
-data(weibull_cc, package = "BayesFBHborrow")
-data(weibull_hist, package = "BayesFBHborrow")
+data(piecewise_exp_cc, package = "BayesFBHborrow")
 
-# Set your initial values and hyperparameters
-s <- c(0, quantile(weibull_cc$tte, c(0.25, 0.75, 1.0), names = FALSE))
-group_data_cc <- group_summary(weibull_cc[weibull_cc$X_trt == 0,]$tte, 
-                               weibull_cc[weibull_cc$X_trt == 0,]$event, 
-                               NULL, s)
-group_data_hist <- group_summary(weibull_hist$tte, weibull_hist$event, NULL, s)
-lambda_init_cc <- init_lambda_hyperparameters(group_data_cc, s) 
-lambda_init_hist <- init_lambda_hyperparameters(group_data_hist, s) 
-initial_param <- list("J" = 2, 
-                      "s_r" = s[2:3], # split points only (length J) 
-                      "mu" = 0, 
-                      "sigma2" = 2,
-                      "tau" = c( 1, 1, 1),
-                      "lambda_0" = mapply(stats::rgamma, n=1, 
-                                          shape = lambda_init_hist$shape, 
-                                          rate = lambda_init_hist$rate), 
-                      "lambda" = mapply(stats::rgamma, n=1, 
-                                        shape = lambda_init_cc$shape, 
-                                        rate = lambda_init_cc$rate), 
-                       "beta_0" = NULL,
-                       "beta" = 0)
-
-hyper <-  list("a_tau" = 1, 
-               "b_tau" = 0.001,
-               "c_tau" = 1,
-               "d_tau" = 10, 
-               "type" = "mix",
-               "p_0" = 0.5, 
-               "a_sigma" = 2,
+# Set your hyperparameters and tuning parameters
+hyper <-  list("a_sigma" = 2,
                "b_sigma" = 2,
-               "Jmax" = 5, 
-               "clam_smooth" = 0.5, 
-               "cprop_beta" = 0.3,
-               "phi" = 2, 
-               "pi_b" = 0.5)
-       
-initial_param_NB <- list("J" = 2, 
-                      "s_r" = s[2:3], # split points only (length J) 
-                      "mu" = 0, 
-                      "sigma2" = 2,
-                      "lambda" = mapply(stats::rgamma, n=1, 
-                                        shape = lambda_init_cc$shape, 
-                                        rate = lambda_init_cc$rate), 
-                       "beta" = 0)
+               "clam_smooth" = 0.5,
+               "phi" = 3)
 
-hyper_NB <-  list("a_sigma" = 2,
-               "b_sigma" = 2,
-               "Jmax" = 5, 
-               "clam_smooth" = 0.5, 
-               "cprop_beta" = 0.3,
-               "phi" = 2, 
-               "pi_b" = 0.5)         
-                    
-output_Noborrowing <- BayesFBHborrow(weibull_cc, NULL, initial_param_NB, hyper_NB,
-                iter = 10, warmup_iter = 1)
+tuning_parameters <- list("Jmax" = 5,
+                          "pi_b" = 0.5,
+                          "cprop_beta" = 0.5)
+                          
+# Set initial values to default
+out <- BayesFBHborrow(piecewise_exp_cc, NULL, tuning_parameters,
+                      initial_values = NULL, hyper, iter = 5, warmup_iter = 1)
 }

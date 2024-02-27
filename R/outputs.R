@@ -20,18 +20,15 @@
 #' @examples
 #' data(piecewise_exp_cc, package = "BayesFBHborrow")
 #' 
-#' # Set your initial values and hyper parameters
-#' s <- c(0, quantile(piecewise_exp_cc$tte, c(0.5, 1.0), names = FALSE))
-#' initial_param <- list("J" = 1, 
-#'                       "s_r" = s[2], # split points only (length J) 
-#'                       "mu" = 0, 
-#'                       "sigma2" = 2,
-#'                       "lambda" = c(1, 1),
-#'                        "beta" = 0)
-#'
-#' # run the MCMC sampler CHANGE THIS BEFORE FINAL CHECK
-#' out <- BayesFBHborrow(piecewise_exp_cc, NULL, initial_param,
-#'                 iter = 10, warmup_iter = 1)
+#' # Set your tuning parameters
+#' tuning_parameters <- list("Jmax" = 5,
+#'                           "pi_b" = 0.5,
+#'                           "cprop_beta" = 0.5)
+#'                           
+#' # run the MCMC sampler
+#' out <- BayesFBHborrow(piecewise_exp_cc, NULL, tuning_parameters, 
+#'                       initial_values = NULL,
+#'                       iter = 10, warmup_iter = 1)
 #' 
 #' # Create a summary of the output
 #' summary(out, estimator = "out_fixed")
@@ -120,20 +117,17 @@ summary.BayesFBHborrow <- function(object, estimator = NULL,
 #' @export
 #'
 #' @examples
-#' data(piecewise_exp_cc, package = "BayesFBHborrow")
+#' data(weibull_cc, package = "BayesFBHborrow")
 #' 
-#' # Set your initial values and hyper parameters
-#' s <- c(0, quantile(piecewise_exp_cc$tte, c(0.5, 1.0), names = FALSE))
-#' initial_param <- list("J" = 1, 
-#'                       "s_r" = s[2], # split points only (length J) 
-#'                       "mu" = 0, 
-#'                       "sigma2" = 2,
-#'                       "lambda" = c(1, 1), 
-#'                        "beta" = 0)
-#'                
-#' # run the MCMC sampler CHANGE THIS BEFORE FINAL CHECK
-#' out <- BayesFBHborrow(piecewise_exp_cc, NULL, initial_param,
-#'                 iter = 10, warmup_iter = 1)
+#' # Set your tuning parameters
+#' tuning_parameters <- list("Jmax" = 5,
+#'                           "pi_b" = 0.5,
+#'                           "cprop_beta" = 0.5)
+#'                           
+#' # run the MCMC sampler
+#' out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters, 
+#'                       initial_values = NULL,
+#'                       iter = 10, warmup_iter = 1)
 #' 
 #' # Plot the posterior mean values of the fixed parameters
 #' coef(out)
@@ -166,21 +160,18 @@ coef.BayesFBHborrow <- function(object, ...) {
 #' @examples
 #' data(weibull_cc, package = "BayesFBHborrow")
 #' 
-#' # Set your initial values and hyper parameters
-#' s <- c(0, quantile(weibull_cc$tte, c(0.5, 1.0), names = FALSE))
-#' initial_param <- list("J" = 1, 
-#'                       "s_r" = s[2], # split points only (length J) 
-#'                       "mu" = 0, 
-#'                       "sigma2" = 2,
-#'                       "lambda" = c(1, 1), 
-#'                        "beta" = 0)
-#'                
-#' # run the MCMC sampler CHANGE THIS BEFORE FINAL CHECK
-#' out <- BayesFBHborrow(weibull_cc, NULL, initial_param,
-#'                 iter = 10, warmup_iter = 1)
+#' # Set your tuning parameters
+#' tuning_parameters <- list("Jmax" = 5,
+#'                           "pi_b" = 0.5,
+#'                           "cprop_beta" = 0.5)
+#'                           
+#' # run the MCMC sampler
+#' out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters, 
+#'                       initial_values = NULL,
+#'                       iter = 10, warmup_iter = 1)
 #' 
 #' # Visualize the smoothed baseline hazard
-#' time_grid <- seq(0, max(s), length.out = 2000)
+#' time_grid <- seq(0, max(weibull_cc$tte), length.out = 2000)
 #' gg <- plot_matrix(time_grid, out$out_slam, 
 #'                   title = "Example plot of smoothed baseline hazard",
 #'                   xlab = "time", ylab = "baseline hazard")
@@ -230,21 +221,18 @@ plot_matrix <- function(x_lim, y, percentiles = c(0.05, 0.95), title = "",
 #' @examples
 #' data(weibull_cc, package = "BayesFBHborrow")
 #' 
-#' # Set your initial values and hyper parameters
-#' s <- c(0, quantile(weibull_cc$tte, c(0.5, 1.0), names = FALSE))
-#' initial_param <- list("J" = 1, 
-#'                       "s_r" = s[2], # split points only (length J) 
-#'                       "mu" = 0, 
-#'                       "sigma2" = 2,
-#'                       "lambda" = c(1, 1),
-#'                        "beta" = 0)
-#'                
-#' # run the MCMC sampler CHANGE THIS BEFORE FINAL CHECK
-#' out <- BayesFBHborrow(weibull_cc, NULL, initial_param,
-#'                 iter = 10, warmup_iter = 1)
+#' # Set your tuning parameters
+#' tuning_parameters <- list("Jmax" = 5,
+#'                           "pi_b" = 0.5,
+#'                           "cprop_beta" = 0.5)
+#'                           
+#' # run the MCMC sampler
+#' out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters, 
+#'                       initial_values = NULL,
+#'                       iter = 10, warmup_iter = 1)
 #' 
 #' # Create a tarce plot of the treatment effect, beta_1
-#' time_grid <- seq(0, max(s), length.out = 2000)
+#' time_grid <- seq(0, max(weibull_cc$tte), length.out = 2000)
 #' gg <- plot_trace(1:10, out$out_fixed$beta_1, 
 #'                   title = "Example trace plot",
 #'                   xlab = "iterations", ylab = "beta_1 (treatment effect)")
@@ -282,21 +270,18 @@ plot_trace <- function(x_lim, samples, title = "", xlab = "", ylab = "",
 #' @examples
 #' data(weibull_cc, package = "BayesFBHborrow")
 #' 
-#' # Set your initial values and hyper parameters
-#' s <- c(0, quantile(weibull_cc$tte, c(0.5, 1.0), names = FALSE))
-#' initial_param <- list("J" = 1, 
-#'                       "s_r" = s[2], # split points only (length J) 
-#'                       "mu" = 0, 
-#'                       "sigma2" = 2,
-#'                       "lambda" = c(1, 1), 
-#'                        "beta" = 0)
-#'
-#' # run the MCMC sampler CHANGE THIS BEFORE FINAL CHECK
-#' out <- BayesFBHborrow(weibull_cc, NULL, initial_param,
-#'                 iter = 10, warmup_iter = 1)
+#' # Set your tuning parameters
+#' tuning_parameters <- list("Jmax" = 5,
+#'                           "pi_b" = 0.5,
+#'                           "cprop_beta" = 0.5)
+#'                           
+#' # run the MCMC sampler
+#' out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters, 
+#'                       initial_values = NULL,
+#'                       iter = 10, warmup_iter = 1)
 #' 
 #' # Plot the frequency of the number of split points, J with a histogram
-#' time_grid <- seq(0, max(s), length.out = 2000)
+#' time_grid <- seq(0, max(weibull_cc$tte), length.out = 2000)
 #' gg <- plot_hist(out$out_fixed$J, title = "Example histogram of J",
 #'                 scale_x = TRUE)
 plot_hist <- function(samples,  title = "", xlab = "Values", ylab = "Frequency", 
@@ -343,18 +328,15 @@ plot_hist <- function(samples,  title = "", xlab = "Values", ylab = "Frequency",
 #' @examples
 #' data(weibull_cc, package = "BayesFBHborrow")
 #' 
-#' # Set your initial values and hyper parameters
-#' s <- c(0, quantile(weibull_cc$tte, c(0.5, 1.0), names = FALSE))
-#' initial_param <- list("J" = 1, 
-#'                       "s_r" = s[2], # split points only (length J) 
-#'                       "mu" = 0, 
-#'                       "sigma2" = 2,
-#'                       "lambda" = c(1, 1), 
-#'                        "beta" = 0)
-#'
-#' # run the MCMC sampler CHANGE THIS BEFORE FINAL CHECK
-#' out <- BayesFBHborrow(weibull_cc, NULL, initial_param,
-#'                 iter = 10, warmup_iter = 1)
+#' # Set your tuning parameters
+#' tuning_parameters <- list("Jmax" = 5,
+#'                           "pi_b" = 0.5,
+#'                           "cprop_beta" = 0.5)
+#'                           
+#' # run the MCMC sampler
+#' out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters, 
+#'                       initial_values = NULL,
+#'                       iter = 10, warmup_iter = 1)
 #' 
 #' # Now let's create a variety of plots
 #' 
@@ -368,7 +350,7 @@ plot_hist <- function(samples,  title = "", xlab = "Values", ylab = "Frequency",
 #'                   ylab = "beta_1 (treatment effect)")
 #'                   
 #' # Lastly. visualize the smoothed baseline hazard
-#' time_grid <- seq(0, max(s), length.out = 2000)
+#' time_grid <- seq(0, max(weibull_cc$tte), length.out = 2000)
 #' gg_matrix <- plot(out, time_grid, estimator = "out_slam", type = "matrix",
 #'                   title = "Example plot of smoothed baseline hazard",
 #'                   xlab = "time", ylab = "baseline hazard")

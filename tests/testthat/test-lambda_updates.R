@@ -288,7 +288,7 @@ test_that("lambda_0_MH_cp works as it should with borrowing", {
                              beta_0 = NULL, mu = mu, sigma2 = sigma2,  
                              lambda = lambda, lambda_0 = lambda_0, tau = tau, 
                              bp_0 = 0, J = J, clam = .75, a_lam = 10, 
-                             b_lam = 0.05, count_lambda_0 = 0, lambda_0_move = 0)
+                             b_lam = 0.05, lambda_0_count = 0, lambda_0_move = 0)
   
   # runs without error
   expect_true(all(!is.na(lambda_0_prop)))
@@ -306,8 +306,8 @@ test_that("lambda_0_MH_cp works as it should with borrowing", {
                                     beta_0 = NULL, mu = mu, sigma2 = sigma2,  
                                     lambda = lambda, lambda_0 = lambda_0, tau = tau, 
                                     bp_0 = 0, J = J, clam = .75, a_lam = 0.01, 
-                                    b_lam = 0.01, count_lambda_0 = 0, lambda_0_move = 0)
-    count_tot <- count_tot + lambda_0_prop$count_lambda_0
+                                    b_lam = 0.01, lambda_0_count = 0, lambda_0_move = 0)
+    count_tot <- count_tot + lambda_0_prop$lambda_0_count
     acc_tot <- acc_tot + lambda_0_prop$lambda_0_move
     #lambda_0 <- lambda_0_prop$lambda_0
   }
@@ -320,18 +320,18 @@ test_that("lambda_0_MH_cp works as it should with borrowing", {
                                   beta_0 = NULL, mu = mu, sigma2 = sigma2,  
                                   lambda = lambda, lambda_0 = lambda_0, tau = tau, 
                                   bp_0 = 0, J = J, clam = .75, a_lam = 0.01, 
-                                  b_lam = 0.01, count_lambda_0 = 0, lambda_0_move = 0)
+                                  b_lam = 0.01, lambda_0_count = 0, lambda_0_move = 0)
   
   set.seed(2023)
   lambda_0_prop_2 <- .lambda_0_MH_cp(df_hist = df_hist, Y_0 = Y_0, I_0 = I_0, X_0 = NULL, s = s,
                                     beta_0 = NULL, mu = mu, sigma2 = sigma2,  
                                     lambda = lambda, lambda_0 = lambda_0, tau = tau, 
                                     bp_0 = 0, J = J, clam = .75, a_lam = 0.01, 
-                                    b_lam = 0.01, count_lambda_0 = 0, lambda_0_move = 0)
+                                    b_lam = 0.01, lambda_0_count = 0, lambda_0_move = 0)
   
   expect_true(all(lambda_0_prop_1$lambda_0 == lambda_0_prop_2$lambda_0))
   expect_true(all(lambda_0_prop_1$df_hist == lambda_0_prop_2$df_hist))
-  expect_true(all(lambda_0_prop_1$count_lambda_0 == lambda_0_prop_2$count_lambda_0))
+  expect_true(all(lambda_0_prop_1$lambda_0_count == lambda_0_prop_2$lambda_0_count))
   expect_true(all(lambda_0_prop_1$lambda_0_move == lambda_0_prop_2$lambda_0_move))
   
   # with covariates, on historical
@@ -345,7 +345,7 @@ test_that("lambda_0_MH_cp works as it should with borrowing", {
                                   beta_0 = beta_0, mu = mu, sigma2 = sigma2,  
                                   lambda = lambda, lambda_0 = lambda_0, tau = tau, 
                                   bp_0 = bp_0, J = J, clam = .75, a_lam = 10, 
-                                  b_lam = 0.05, count_lambda_0 = 0, lambda_0_move = 0)
+                                  b_lam = 0.05, lambda_0_count = 0, lambda_0_move = 0)
   
   # runs without error
   expect_true(all(!is.na(lambda_0_prop)))
@@ -359,7 +359,7 @@ test_that("lambda_0_MH_cp works as it should with borrowing", {
                                   beta_0 = beta_0, mu = mu, sigma2 = sigma2,  
                                   lambda = lambda, lambda_0 = lambda_0, tau = tau, 
                                   bp_0 = bp_0, J = J, clam = .75, a_lam = 10, 
-                                  b_lam = 0.05, count_lambda_0 = 0, lambda_0_move = 0),
+                                  b_lam = 0.05, lambda_0_count = 0, lambda_0_move = 0),
                 regex = 'missing value')
   
   # expect error for "NA" values of lambda
@@ -370,7 +370,7 @@ test_that("lambda_0_MH_cp works as it should with borrowing", {
                               beta_0 = beta_0, mu = mu, sigma2 = sigma2,  
                               lambda = lambda, lambda_0 = lambda_0, tau = tau, 
                               bp_0 = bp_0, J = J, clam = .75, a_lam = 10, 
-                              b_lam = 0.05, count_lambda_0 = 0, lambda_0_move = 0),
+                              b_lam = 0.05, lambda_0_count = 0, lambda_0_move = 0),
                regex = 'missing value')
 })
 
@@ -400,14 +400,14 @@ test_that("lambda_0_MH_cp works as it should without borrowing", {
                                   sigma2 = sigma2,  
                                   lambda_0 = lambda_0, bp_0 = 0,
                                   J = J, clam = .75, a_lam = 10, 
-                                  b_lam = 0.05, count_lambda_0 = 0,
+                                  b_lam = 0.05, lambda_0_count = 0,
                                   lambda_0_move = 0)
   
   # runs without error
   expect_true(all(!is.na(lambda_0_prop)))
   
   # tries all combinations
-  expect_equal(lambda_0_prop$count_lambda_0, J + 1)
+  expect_equal(lambda_0_prop$lambda_0_count, J + 1)
   
   
   # Check acceptance ratio
@@ -420,9 +420,9 @@ test_that("lambda_0_MH_cp works as it should without borrowing", {
                                      sigma2 = sigma2,  
                                      lambda_0 = lambda_0,bp_0 = 0,
                                      J = J, clam = 0.8, a_lam = 0.05, 
-                                     b_lam = 0.05, count_lambda_0 = 0,
+                                     b_lam = 0.05, lambda_0_count = 0,
                                      lambda_0_move = 0)
-    count_tot <- count_tot + lambda_0_prop$count_lambda_0
+    count_tot <- count_tot + lambda_0_prop$lambda_0_count
     acc_tot <- acc_tot + lambda_0_prop$lambda_0_move
     #lambda_0 <- lambda_0_prop$lambda_0
   }
@@ -436,7 +436,7 @@ test_that("lambda_0_MH_cp works as it should without borrowing", {
                                     sigma2 = sigma2,
                                     lambda_0 = lambda_0,  bp_0 = 0,
                                     J = J, clam = 0.8, a_lam = 0.05, 
-                                    b_lam = 0.05, count_lambda_0 = 0,
+                                    b_lam = 0.05, lambda_0_count = 0,
                                     lambda_0_move = 0)
   
   set.seed(2023)
@@ -445,12 +445,12 @@ test_that("lambda_0_MH_cp works as it should without borrowing", {
                                     sigma2 = sigma2, 
                                     lambda_0 = lambda_0, bp_0 = 0,
                                     J = J, clam = 0.8, a_lam = 0.05, 
-                                    b_lam = 0.05, count_lambda_0 = 0,
+                                    b_lam = 0.05, lambda_0_count = 0,
                                     lambda_0_move = 0)
   
   expect_true(all(lambda_0_prop_1$lambda_0 == lambda_0_prop_2$lambda_0))
   expect_true(all(lambda_0_prop_1$df_hist == lambda_0_prop_2$df_hist))
-  expect_true(all(lambda_0_prop_1$count_lambda_0 == lambda_0_prop_2$count_lambda_0))
+  expect_true(all(lambda_0_prop_1$lambda_0_count == lambda_0_prop_2$lambda_0_count))
   expect_true(all(lambda_0_prop_1$lambda_0_move == lambda_0_prop_2$lambda_0_move))
   
   # with covariates, on historical
@@ -465,7 +465,7 @@ test_that("lambda_0_MH_cp works as it should without borrowing", {
                                   sigma2 = sigma2,
                                   lambda_0 = lambda_0, bp_0 = 0,
                                   J = J, clam = 0.8, a_lam = 0.05, 
-                                  b_lam = 0.05, count_lambda_0 = 0,
+                                  b_lam = 0.05, lambda_0_count = 0,
                                   lambda_0_move = 0)
   
   # runs without error
@@ -480,7 +480,7 @@ test_that("lambda_0_MH_cp works as it should without borrowing", {
                  X_0 = NULL, s = s, beta_0 = NULL, mu = mu,
                  sigma2 = sigma2, 
                  lambda_0 = lambda_0, bp_0 = 0,
-                 J = J, clam = 0.8, a_lam = 0.05, b_lam = 0.05, count_lambda_0 = 0,
+                 J = J, clam = 0.8, a_lam = 0.05, b_lam = 0.05, lambda_0_count = 0,
                  lambda_0_move = 0),
                regex = 'missing value')
   
@@ -493,7 +493,7 @@ test_that("lambda_0_MH_cp works as it should without borrowing", {
                               sigma2 = sigma2, 
                               lambda_0 = lambda_0,bp_0 = 0,
                               J = J, clam = 0.8, a_lam = 0.05, 
-                              b_lam = 0.05, count_lambda_0 = 0,
+                              b_lam = 0.05, lambda_0_count = 0,
                               lambda_0_move = 0),
                regex = 'missing value')
   })

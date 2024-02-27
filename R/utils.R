@@ -5,11 +5,12 @@
 #' @param Y_0 historical time-to-event data
 #' @param X design Matrix
 #' @param X_0 design Matrix for historical data
+#' @param tuning_parameters list of tuning parameters
+#' @param initial_values list of initial values (optional)
 #' @param hyperparameters list of hyperparameters
-#' @param initial_param list of initial parameters
 #'
 #' @return a print statement
-.input_check <- function(Y, Y_0, X, X_0, hyperparameters, initial_param) {
+.input_check <- function(Y, Y_0, X, X_0, tuning_parameters, initial_values = NULL, hyperparameters) {
 
   if (any(unlist(hyperparameters) < 0)) {
     stop((paste("in hyperparameters(s): ",
@@ -17,17 +18,19 @@
     "hyperparameters must be non negative")))
 
   } else if (max(hyperparameters$p_0, hyperparameters$clam_smooth,
-                 hyperparameters$pi_b) > 1) {
-
+                 tuning_parameters$pi_b) > 1) {
+    listed <- c("p_0" = hyperparameters$p_0, "clam_smooth" = hyperparameters$clam_smooth,
+              "pi_b" = tuning_parameters$pi_b)
     stop(paste("in hyperparameters:",
-    names(which(unlist(hyperparameters[c("p_0", "clam_smooth", "pi_b")]) > 1)),
+    names(which(unlist(listed) > 1)),
     ", should be in range [0, 1]"))
 
   }
 
-  J <- initial_param$J
   
   if (!is.null(Y_0)) {
+    if (!is.null(initial_values)) {
+      J <- initial_values$J
     if (hyperparameters$type != c("uni")) {
       borr_choice <- ifelse(hyperparameters$type == c("mix"), "mix", "all")
       s <- (paste("Choice of borrowing:", borr_choice))
@@ -35,10 +38,10 @@
         stop(paste("specify hyperparameters for",
                    names(which(hyperparameters[c("c_tau", "d_tau")] == "NULL"))))
       }
-      if (borr_choice == "mix" && length(initial_param$tau) != J + 1) {
+      if (borr_choice == "mix" && length(initial_values$tau) != J + 1) {
         stop("wrong dimension for tau, should be J+1")
       }
-      else if (borr_choice == "all" && length(initial_param$tau) == J + 1) {
+      else if (borr_choice == "all" && length(initial_values$tau) == J + 1) {
         stop("Borrowing is 'all' but several initial values for tau were provided")
       }
     } else {
@@ -46,64 +49,87 @@
       if (any(hyperparameters[c("c_tau", "d_tau")] != "NULL")) {
         message("Borrowing is 'uni', choice of c_tau and d_tau will be ignored")
       }
-      if (length(initial_param$tau) != J + 1) {
+      if (length(initial_values$tau) != J + 1) {
         stop("wrong dimension for tau, should be J+1")
       }
     }
 
       maxSj <- min(max(Y), max(Y_0))
-      if (max(initial_param$s_r) > maxSj) {
+      if (max(initial_values$s_r) > maxSj) {
         stop("all s_r must be < min(max(Y),max(Y_0))")
-      } else if (any(initial_param$s_r < 0)) {
+      } else if (any(initial_values$s_r < 0)) {
         stop("all s_r must be > 0")
       }
       
-      if (any(sapply(initial_param[c("lambda", "lambda_0")], length) != J+1)) {
+      if (any(sapply(initial_values[c("lambda", "lambda_0")], length) != J+1)) {
         stop(paste("dimension error in", names(which(sapply(
-          initial_param[c("lambda", "lambda_0")], length) != J+1))))
+          initial_values[c("lambda", "lambda_0")], length) != J+1))))
       }
       
-      if (any(c(initial_param$lambda, initial_param$lambda_0) < 0)) {
+      if (any(c(initial_values$lambda, initial_values$lambda_0) < 0)) {
         stop("baseline hazard must be > 0")
       }
       
       if (is.null(X_0)) {
-        if (length(initial_param$beta) != dim(X)[[2]] || length(initial_param$beta_0) != 0) {
-          arg <- which(sapply(initial_param[c("beta", "beta_0")],
+        if (length(initial_values$beta) != dim(X)[[2]] || length(initial_values$beta_0) != 0) {
+          arg <- which(sapply(initial_values[c("beta", "beta_0")],
                               length) != c(ncol(X), ncol(X_0)))
-          arg_dim <- dim(initial_param[names(arg)])
-          trial <- switch(ncol(X) != length(initial_param$beta), dim(X), NULL)
+          arg_dim <- dim(initial_values[names(arg)])
+          trial <- switch(ncol(X) != length(initial_values$beta), dim(X), NULL)
           stop(paste0("dimension mismatch in ", names(arg), " with length ", arg_dim,
                       ", given design matrix has dimension ", trial))
         }
       } else {
-        if (length(initial_param$beta) != dim(X)[[2]] || length(initial_param$beta_0) != dim(X_0)[[2]]) {
-          arg <- which(sapply(initial_param[c("beta", "beta_0")],
+        if (length(initial_values$beta) != dim(X)[[2]] || length(initial_values$beta_0) != dim(X_0)[[2]]) {
+          arg <- which(sapply(initial_values[c("beta", "beta_0")],
                               length) != c(ncol(X), ncol(X_0)))
-          arg_dim <- length(initial_param[names(arg)][[1]])
-          trial <- dplyr::if_else(ncol(X) != length(initial_param$beta),
+          arg_dim <- length(initial_values[names(arg)][[1]])
+          trial <- dplyr::if_else(ncol(X) != length(initial_values$beta),
                                   dim(X)[2], dim(X_0)[2])
           stop(paste0("dimension mismatch in ", names(arg), " with length ",
                       arg_dim,", given design matrix has dimension ", trial))
         }
       }
-      cprop_beta <- hyperparameters$cprop_beta
-      max_length <- max(length(initial_param$beta), length(initial_param$beta_0))
+      cprop_beta <- tuning_parameters$cprop_beta
+      max_length <- max(length(initial_values$beta), length(initial_values$beta_0))
       if (max_length != length(cprop_beta)) {
-        arg <- which(sapply(initial_param[c("beta", "beta_0")],
+        arg <- which(sapply(initial_values[c("beta", "beta_0")],
                                    length) == max_length)
-        arg_length <- length(initial_param[names(arg)][[1]])
+        arg_length <- length(initial_values[names(arg)][[1]])
         stop(paste0("dimension mismatch in 'cprop_beta' with length ",
                     length(cprop_beta),", given the number of covariates in ",names(arg), " is ", arg_length, "\n"))
       }
-  } else {
+      if (initial_values$sigma2 < 0) {
+        stop("sigma2 must be > 0")
+      }
+      
+      if (length(initial_values$s_r) != J) {
+        stop("dimension error in s_r")
+      }
+    } else { # if no initial values are provided
+      if (hyperparameters$type != c("uni")) {
+      borr_choice <- ifelse(hyperparameters$type == c("mix"), "mix", "all")
+      s <- (paste("Choice of borrowing:", borr_choice))
+      if (any(hyperparameters[c("c_tau", "d_tau")] == "NULL")) {
+        stop(paste("specify hyperparameters for",
+                   names(which(hyperparameters[c("c_tau", "d_tau")] == "NULL"))))
+      }
+    } else {
+      s <- "Choice of borrowing: uni"
+      if (any(hyperparameters[c("c_tau", "d_tau")] != "NULL")) {
+        message("Borrowing is 'uni', choice of c_tau and d_tau will be ignored")
+        }
+      }
+    }
+  } else if (!is.null(initial_values)) {
     s <- "No borrowing"
-    lambda <- initial_param[grepl("^lambda", names(initial_param))]
-    beta <- initial_param[grepl("^beta", names(initial_param))]
+    lambda <- initial_values[grepl("^lambda", names(initial_values))]
+    beta <- initial_values[grepl("^beta", names(initial_values))]
+    J <- initial_values$J
     
-      if (max(initial_param$s_r) > max(Y)) {
+      if (max(initial_values$s_r) > max(Y)) {
         stop("all s_r must be < max(Y)")
-      } else if (any(initial_param$s_r < 0)) {
+      } else if (any(initial_values$s_r < 0)) {
         stop("all s_r must be > 0")
       }
       
@@ -119,15 +145,17 @@
       if (!is.null(X) && length(beta[[1]]) != ncol(X)) {
         stop(paste0("dimension error in beta with length ", length(beta), 
                     ", should be of length "), ncol(X))
-    }
-  }
+      }
+      if (initial_values$sigma2 < 0) {
+        stop("sigma2 must be > 0")
+      }
+    
+      if (length(initial_values$s_r) != J) {
+        stop("dimension error in s_r")
+      }
 
-  if (initial_param$sigma2 < 0) {
-    stop("sigma2 must be > 0")
-  }
-
-  if (length(initial_param$s_r) != J) {
-    stop("dimension error in s_r")
+  } else {
+    s <- "No borrowing"
   }
 
   return(invisible(s))
@@ -140,7 +168,7 @@
 #' @param Y time-to-event
 #' @param I censor indicator
 #' @param X design Matrix
-#' @param s split point locations, including start and end (length J+2)
+#' @param s split point locations, including start and end (length J + 2)
 #' @param lambda baseline Hazards (length J+1)
 #' @param bp number of covariates
 #' @param J number of split points
@@ -236,7 +264,6 @@
 #' 
 #' group_summary(Y, I, X, s)
 group_summary <- function(Y, I, X, s) {
-
   data <- as.data.frame(cbind(seq_along(Y), Y, I))
 
   if (is.null(X)) {
@@ -344,8 +371,7 @@ group_summary <- function(Y, I, X, s) {
 #' group_data <- group_summary(Y, I, NULL, s)
 #' init_lambda_hyperparameters(group_data, s)
 init_lambda_hyperparameters <- function(group_data, s, w = 0.5) {
-
-  h_star <-rep(0, length(s)- 1)
+  h_star <- rep(0, length(s)- 1)
   
   # Set index
   idx <- 1:length(h_star)
@@ -380,5 +406,4 @@ init_lambda_hyperparameters <- function(group_data, s, w = 0.5) {
   }
   
   return(list("shape" = shape, "rate" = rate, "t2" = t2))
-  
 }

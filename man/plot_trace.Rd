@@ -38,21 +38,18 @@ Creates a trace plot of given MCMC samples.
 \examples{
 data(weibull_cc, package = "BayesFBHborrow")
 
-# Set your initial values and hyper parameters
-s <- c(0, quantile(weibull_cc$tte, c(0.5, 1.0), names = FALSE))
-initial_param <- list("J" = 1, 
-                      "s_r" = s[2], # split points only (length J) 
-                      "mu" = 0, 
-                      "sigma2" = 2,
-                      "lambda" = c(1, 1),
-                       "beta" = 0)
-               
-# run the MCMC sampler CHANGE THIS BEFORE FINAL CHECK
-out <- BayesFBHborrow(weibull_cc, NULL, initial_param,
-                iter = 10, warmup_iter = 1)
+# Set your tuning parameters
+tuning_parameters <- list("Jmax" = 5,
+                          "pi_b" = 0.5,
+                          "cprop_beta" = 0.5)
+                          
+# run the MCMC sampler
+out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters, 
+                      initial_values = NULL,
+                      iter = 10, warmup_iter = 1)
 
 # Create a tarce plot of the treatment effect, beta_1
-time_grid <- seq(0, max(s), length.out = 2000)
+time_grid <- seq(0, max(weibull_cc$tte), length.out = 2000)
 gg <- plot_trace(1:10, out$out_fixed$beta_1, 
                   title = "Example trace plot",
                   xlab = "iterations", ylab = "beta_1 (treatment effect)")

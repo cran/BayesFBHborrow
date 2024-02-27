@@ -1,4 +1,4 @@
-cprop_beta =c(1, 2)
+cprop_beta = 2.4
 
 Y_0 <-  c(7, 25, 51, 13, 64, 11)
 I_0 <- c(1 ,1 ,0, 1, 1, 1)
@@ -18,7 +18,7 @@ beta_0 <- c(2, 5)
 
 bp <- ncol(X)
 lambda <- c(1.5, 1.4, 1.0)
-beta <- 5
+beta <- 4
 
 beta_new <- beta
 beta_0_new <- beta_0
@@ -47,95 +47,72 @@ test_that("loglikelihood ratio for both beta/beta_0 works ", {
   expect_equal(llikelihood_ratio, llikeli)
   })
 
-test_that("Beta updates are correct", {
-  set.seed(2023)
-  new_beta <- .beta_MH_RW(df, beta, bp, cprop_beta[1], count_beta = 0)
+
+test_that("First and second derivative for proposal correct", {
+  out_mom <- .beta_mom.NR.fun(df, 1, beta, bp, cprop_beta)
+  expect_lt(out_mom$D1, 0)
+  expect_lt(out_mom$D2, 0)
+})
+
+
+test_that("Beta Newton Raphson updates are correct", {
+ 
+  set.seed(56)
+  out_NR <- .beta_MH_NR(df, beta, bp, cprop_beta, beta_count = 0)
+  new_beta <- out_NR$beta
   expect_true(all(!is.na(new_beta)))
   
-  count_beta <- beta*0
-  set.seed(2023)
+  beta_count <- beta * 0
+  
+  set.seed(56)
   for(k in 1:bp){
-      
+    
     beta_new <- beta
-    beta_prop <- stats::rnorm(1, beta[k], cprop_beta[k])
+    all_mom <- .beta_mom.NR.fun(df, k, beta, bp, cprop_beta)
+    beta_prop <- stats::rnorm(n = 1, mean =all_mom$mu, sd = sqrt(all_mom$var))
     beta_new[k] <- beta_prop
       
     logacc <- .llikelihood_ratio_beta(df, beta, beta_new)
       
     if(logacc > log(stats::runif(1))){
       beta[k] <- beta_prop
-      count_beta[k] <- count_beta[k] + 1
+      beta_count[k] <- beta_count[k] + 1
     }
       
   }
   
-  expect_equal(beta, new_beta$beta)
+  expect_equal(beta, new_beta)
   
   # check acceptance ratio
-  count_beta <- 0
+  beta_count <- 0
   for (ii in 1:100) {
-    new_beta <- .beta_MH_RW(df, beta, bp, cprop_beta[1], count_beta)
-    count_beta <- new_beta$count_beta
+    new_beta <- .beta_MH_NR(df, beta, bp, cprop_beta, beta_count)
+    beta_count <- new_beta$beta_count
   }
-  expect_gt(count_beta, 20)
+  expect_gt(beta_count, 20)
   
 })
 
-test_that("Mean proposal (mu_prop)", {
-  mu_prop <- .beta_mom(df, 1, beta, bp, cprop_beta[1])
-  expect_true(!is.na(mu_prop))
-})
 
-
-test_that("lprop_density_beta are correct", {
+test_that(".lprop.dens.beta.NR are correct", {
   mu_prop <- 1
-  set.seed(2023)
-  beta_prop <- stats::rnorm(n = 1, mean = mu_prop, sd = cprop_beta[1])
+  set.seed(117327)
+  beta_prop <- stats::rnorm(n = 1, mean = mu_prop, sd = cprop_beta)
   
   # Negative (log density)
-  expect_true(!is.na(.lprop_density_beta(beta_prop, mu_prop, cprop_beta[1])))
-  expect_lt(.lprop_density_beta(beta_prop, mu_prop, cprop_beta[1]), 0)
-  l1 <- (-1 / (2 * cprop_beta[1]**2)) * (beta_prop - mu_prop)**2
-  set.seed(2023)
-  expect_equal(l1, .lprop_density_beta(beta_prop, mu_prop, cprop_beta[1]))
+  expect_true(!is.na(.lprop.dens.beta.NR(beta_prop, mu_prop, cprop_beta)))
+  expect_lt(.lprop.dens.beta.NR(beta_prop, mu_prop, cprop_beta), 0)
+  l1 <- (-1 / (2 * cprop_beta**2)) * (beta_prop - mu_prop)**2
+  set.seed(117327)
+  expect_equal(l1, .lprop.dens.beta.NR(beta_prop, mu_prop, cprop_beta))
 })
 
-test_that("MALA proposal is correct", {
-  set.seed(2023)
-  new_beta <- .beta_MH_MALA(df, beta, bp, cprop_beta, count_beta = 0)
-  expect_true(all(!is.na(new_beta)))
-  
-  count_beta <- beta*0
-  set.seed(2023)
-  for(k in 1:bp){
-    beta_new <- beta
-    
-    mu_prop <- .beta_mom(df, k, beta, bp, cprop_beta[k])
-    beta_prop <- rnorm(n = 1, mean = mu_prop, sd = cprop_beta[k])
-    beta_new[k] <- beta_prop
-    
-    mu_old <- .beta_mom(df, k, beta_new, bp, cprop_beta)
-    
-    log_prop_ratio <- .lprop_density_beta(beta, mu_prop, cprop_beta[k]) - 
-      .lprop_density_beta(beta_prop, mu_old, cprop_beta[k])
-    target_ratio <- .llikelihood_ratio_beta(df, beta, beta_new)
-    
-    logacc <- target_ratio - log_prop_ratio  
-    
-    if(logacc > log(runif(1))) {
-      beta[k] <- beta_prop
-      count_beta[k] <- count_beta[k] + 1
-    }
-    
-  }
-  
-  expect_equal(beta, new_beta$beta)
-  
-  # check acceptance ratio
-  count_beta <- 0
-  for (ii in 1:100) {
-    new_beta <- .beta_MH_MALA(df, beta, bp, cprop_beta, count_beta[1])
-    count_beta <- new_beta$count_beta
-  }
-  expect_gt(count_beta, 20)
-})
+
+
+
+
+
+
+
+
+

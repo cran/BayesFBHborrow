@@ -31,18 +31,15 @@ S3 object which produces different plots depending on the
 \examples{
 data(weibull_cc, package = "BayesFBHborrow")
 
-# Set your initial values and hyper parameters
-s <- c(0, quantile(weibull_cc$tte, c(0.5, 1.0), names = FALSE))
-initial_param <- list("J" = 1, 
-                      "s_r" = s[2], # split points only (length J) 
-                      "mu" = 0, 
-                      "sigma2" = 2,
-                      "lambda" = c(1, 1), 
-                       "beta" = 0)
-
-# run the MCMC sampler CHANGE THIS BEFORE FINAL CHECK
-out <- BayesFBHborrow(weibull_cc, NULL, initial_param,
-                iter = 10, warmup_iter = 1)
+# Set your tuning parameters
+tuning_parameters <- list("Jmax" = 5,
+                          "pi_b" = 0.5,
+                          "cprop_beta" = 0.5)
+                          
+# run the MCMC sampler
+out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters, 
+                      initial_values = NULL,
+                      iter = 10, warmup_iter = 1)
 
 # Now let's create a variety of plots
 
@@ -56,7 +53,7 @@ gg_trace <- plot(out, 1:10, estimator = "beta_1", type = "trace",
                   ylab = "beta_1 (treatment effect)")
                   
 # Lastly. visualize the smoothed baseline hazard
-time_grid <- seq(0, max(s), length.out = 2000)
+time_grid <- seq(0, max(weibull_cc$tte), length.out = 2000)
 gg_matrix <- plot(out, time_grid, estimator = "out_slam", type = "matrix",
                   title = "Example plot of smoothed baseline hazard",
                   xlab = "time", ylab = "baseline hazard")

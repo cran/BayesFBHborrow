@@ -4,7 +4,7 @@
 \alias{.beta_MH_RW}
 \title{Beta Metropolis-Hastings Random walk move}
 \usage{
-.beta_MH_RW(df, beta, bp, cprop_beta, count_beta)
+.beta_MH_RW(df, beta, bp, cprop_beta, beta_count)
 }
 \arguments{
 \item{df}{data.frame from dataframe_fun()}
@@ -15,7 +15,7 @@
 
 \item{cprop_beta}{hyperparameter for beta proposal standard deviation}
 
-\item{count_beta}{number of moves done for beta}
+\item{beta_count}{number of moves done for beta}
 }
 \value{
 beta, either old or new move

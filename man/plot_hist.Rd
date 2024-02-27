@@ -42,21 +42,18 @@ Plots a histogram of the given discrete MCMC samples
 \examples{
 data(weibull_cc, package = "BayesFBHborrow")
 
-# Set your initial values and hyper parameters
-s <- c(0, quantile(weibull_cc$tte, c(0.5, 1.0), names = FALSE))
-initial_param <- list("J" = 1, 
-                      "s_r" = s[2], # split points only (length J) 
-                      "mu" = 0, 
-                      "sigma2" = 2,
-                      "lambda" = c(1, 1), 
-                       "beta" = 0)
-
-# run the MCMC sampler CHANGE THIS BEFORE FINAL CHECK
-out <- BayesFBHborrow(weibull_cc, NULL, initial_param,
-                iter = 10, warmup_iter = 1)
+# Set your tuning parameters
+tuning_parameters <- list("Jmax" = 5,
+                          "pi_b" = 0.5,
+                          "cprop_beta" = 0.5)
+                          
+# run the MCMC sampler
+out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters, 
+                      initial_values = NULL,
+                      iter = 10, warmup_iter = 1)
 
 # Plot the frequency of the number of split points, J with a histogram
-time_grid <- seq(0, max(s), length.out = 2000)
+time_grid <- seq(0, max(weibull_cc$tte), length.out = 2000)
 gg <- plot_hist(out$out_fixed$J, title = "Example histogram of J",
                 scale_x = TRUE)
 }

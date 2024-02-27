@@ -11,9 +11,9 @@
   Y_0 = NULL,
   I_0 = NULL,
   X_0 = NULL,
-  initial_parameters,
-  hyperparameters = list(a_sigma = 1, b_sigma = 1, Jmax = 5, clam_smooth = 0.8,
-    cprop_beta = 0.3, phi = 3, pi_b = 0.5),
+  tuning_parameters,
+  initial_values = NULL,
+  hyperparameters = list(a_sigma = 1, b_sigma = 1, phi = 3, clam_smooth = 0.8),
   lambda_hyperparameters = list(a_lambda = 0.01, b_lambda = 0.01),
   iter = 1500L,
   warmup_iter = 10L,
@@ -34,12 +34,19 @@
 
 \item{X_0}{historical design matrix, default is NULL}
 
-\item{initial_parameters}{list containing initial values of each parameter}
+\item{tuning_parameters}{list of "cprop_beta", "Jmax",
+and "pi_b"}
 
-\item{hyperparameters}{list containing hyperparameters}
+\item{initial_values}{list containing the initial values of c("J", "s_r",
+"mu", "sigma2", "lambda", beta") (optional)}
 
-\item{lambda_hyperparameters}{contains two hyperparameters (a and b) used for
-the update of lambda}
+\item{hyperparameters}{list containing the hyperparameters c("a_sigma",
+"b_sigma", "Jmax", "clam_smooth", "cprop_beta", "phi"). Default is 
+list("a_sigma" = 2, "b_sigma" = 2, "Jmax" = 20, "clam_smooth" = 0.8, 
+"cprop_beta" = 0.3, "phi" = 3)}
+
+\item{lambda_hyperparameters}{contains two hyperparameters ("a" and "b") used for
+the update of lambda, default is c(0.01, 0.01)}
 
 \item{iter}{number of iterations for MCMC sampler, excluding warmup, 
 default is 2000}
@@ -68,39 +75,28 @@ user is not familiar with the model at hand.
 }
 \examples{
 set.seed(123)
-# Load example data "weibull_cc" and set your initial values and hyperparameters
+# Load example data and set your initial values and hyper parameters
 data(weibull_cc, package = "BayesFBHborrow")
+data(weibull_hist, package = "BayesFBHborrow")
 
-# The datasets consists of 3 columns named "tte", "event" and "X". To 
-# explicitly run the sampler, extract the samples as following
+# The datasets consists of 3 (2) columns named "tte", "event" and "X".
+# To explicitly run the sampler, extract the samples as following
 Y <- weibull_cc$tte
 I <- weibull_cc$event
-X <- weibull_cc$X_trt
+X <- matrix(weibull_cc$X_trt)
 
-# Set your initial values and hyper parameters
-s <- c(0, quantile(weibull_cc$tte, c(0.25, 0.75, 1.0), names = FALSE))
-group_data <- group_summary(weibull_cc[weibull_cc$X_trt == 0,]$tte, 
-                            weibull_cc[weibull_cc$X_trt == 0,]$event, NULL, s)
-lambda_init <- init_lambda_hyperparameters(group_data, s) 
-initial_param <- list("J" = 2, 
-                      "s_r" = s[2:3], # split points only (length J) 
-                      "mu" = 0, 
-                      "sigma2" = 2,
-                      "lambda" = mapply(stats::rgamma, n=1, 
-                                        shape = lambda_init$shape, 
-                                        rate = lambda_init$rate), 
-                       "beta" = 0)
-
+# Specify hyperparameters and tuning parameters
 hyper <-  list("a_sigma" = 2,
                "b_sigma" = 2,
-               "Jmax" = 5, 
-               "clam_smooth" = 0.5, 
-               "cprop_beta" = 0.3,
-               "phi" = 2, 
-               "pi_b" = 0.5)
+               "clam_smooth" = 0.5,
+               "phi" = 3)
 
+tuning_parameters <- list("Jmax" = 5,
+                          "pi_b" = 0.5,
+                          "cprop_beta" = 0.5)
+                          
+# Set initial values to 'NULL' for default settings
 output <- GibbsMH(Y, I, X, NULL, NULL, NULL,
-                          initial_param,
-                          hyper,
-                          iter = 5, warmup_iter = 1)
+                  tuning_parameters, initial_values = NULL, hyper, 
+                  iter = 5, warmup_iter = 1)
 }

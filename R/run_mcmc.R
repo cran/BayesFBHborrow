@@ -11,11 +11,17 @@
 #'  named "X_0_i" (where i should be a number/
 #' indicator of the covariate), for historical
 #'  data
+#' @param tuning_parameters list of "cprop_beta", "cprop_beta_0", "alpha", "Jmax",
+#' and "pi_b"
+#' @param initial_values list containing the initial values of c("J", "s_r",
+#' "mu", "sigma2", "tau", "lambda_0", "lambda", "beta_0", "beta") (optional)
 #' @param hyperparameters list containing the hyperparameters c("a_tau", "b_tau",
-#' "c_tau", "d_tau","type", "p_0", "a_sigma", "b_sigma", "Jmax", "clam_smooth",
-#'  "cprop_beta", "phi", "pi_b")
-#' @param initial_parameters list containing the initial values of c("J", "s_r",
-#' "mu", "sigma2", "tau", "lambda_0", "lambda", "beta_0", "beta")
+#'  "c_tau", "d_tau","type", "p_0", "a_sigma", "b_sigma", "Jmax", "clam_smooth",
+#'  "cprop_beta", "phi", "pi_b"). Default is list("a_tau" = 1,"b_tau" = 1,"c_tau" = 1,
+#' "d_tau" = 0.001, "type" = "mix", "p_0" = 0.5, "a_sigma" = 2, "b_sigma" = 2,
+#' "Jmax" = 20, "clam_smooth" = 0.8, "cprop_beta" = 0.3, "phi" = 3, "pi_b" = 0.5)
+#' @param lambda_hyperparameters contains two hyperparameters (a_lambda and b_lambda)
+#' used for the update of lambda and lambda_0. Default is c(0.01, 0.01)
 #' @param lambda_hyperparameters contains two (three) hyperparameters (a, b (,alpha))
 #'  used for the update of lambda and lambda_0. alpha is the power parameter when 
 #'  sampling for lambda (effects how much is borrowed)
@@ -37,44 +43,26 @@
 #' data(piecewise_exp_cc, package = "BayesFBHborrow")
 #' data(piecewise_exp_hist, package = "BayesFBHborrow")
 #' 
-#' # Set your initial values and hyper parameters
-#' s <- c(0, quantile(piecewise_exp_cc$tte, c(0.25, 0.75, 1.0), names = FALSE))
-#' group_data_cc <- group_summary(piecewise_exp_cc[piecewise_exp_cc$X_trt == 0,]$tte, 
-#'                                piecewise_exp_cc[piecewise_exp_cc$X_trt == 0,]$event, 
-#'                                NULL, s)
-#' group_data_hist <- group_summary(piecewise_exp_hist$tte, piecewise_exp_hist$event, NULL, s)
-#' lambda_init_cc <- init_lambda_hyperparameters(group_data_cc, s) 
-#' lambda_init_hist <- init_lambda_hyperparameters(group_data_hist, s) 
-#' initial_param <- list("J" = 2, 
-#'                       "s_r" = s[2:3], # split points only (length J) 
-#'                       "mu" = 0, 
-#'                       "sigma2" = 2,
-#'                       "tau" = c( 1, 1, 1),
-#'                       "lambda_0" = mapply(stats::rgamma, n=1, 
-#'                                           shape = lambda_init_hist$shape, 
-#'                                           rate = lambda_init_hist$rate), 
-#'                       "lambda" = mapply(stats::rgamma, n=1, 
-#'                                         shape = lambda_init_cc$shape, 
-#'                                         rate = lambda_init_cc$rate), 
-#'                        "beta_0" = NULL,
-#'                        "beta" = 0)
-#'
+#' # Set your hyperparameters and tuning parameters
 #' hyper <-  list("a_tau" = 1, 
 #'                "b_tau" = 0.001,
 #'                "c_tau" = 1,
-#'                "d_tau" = 10, 
-#'                "type" = "mix",
+#'                "d_tau" = 1, 
+#'                "type" = "all",
 #'                "p_0" = 0.5, 
 #'                "a_sigma" = 2,
 #'                "b_sigma" = 2,
-#'                "Jmax" = 5, 
-#'                "clam_smooth" = 0.5, 
-#'                "cprop_beta" = 0.3,
-#'                "phi" = 2, 
-#'                "pi_b" = 0.5)
-#'
-#' out <- BayesFBHborrow(piecewise_exp_cc, piecewise_exp_hist, initial_param, hyper,
-#'                 iter = 5, warmup_iter = 1)
+#'                "clam_smooth" = 0.5,
+#'                "phi" = 3)
+#' 
+#' tuning_parameters <- list("Jmax" = 5,
+#'                           "pi_b" = 0.5,
+#'                           "cprop_beta" = 0.5,
+#'                           "alpha" = 0.4)
+#'                           
+#' # Set initial values to default
+#' out <- BayesFBHborrow(piecewise_exp_cc, piecewise_exp_hist, tuning_parameters,
+#'                       initial_values = NULL, hyper, iter = 5, warmup_iter = 1)
 #' 
 #' # Create a summary of the output
 #' # summary(out, estimator = "out_fixed")
@@ -85,9 +73,10 @@
 #' hist <- plot(out, estimator = "J", type = "hist")
 #' smoothed_baseline_hazard <- plot(out, 1:2000, estimator = "out_slam", 
 #'                                  type = "matrix")
-BayesFBHborrow <- function(data, data_hist = NULL, initial_parameters, hyperparameters,
-                     lambda_hyperparameters, iter, warmup_iter, refresh,
-                     verbose, max_grid) {
+BayesFBHborrow <- function(data, data_hist = NULL, tuning_parameters, 
+                           initial_values, hyperparameters, 
+                           lambda_hyperparameters, iter, warmup_iter, refresh,
+                           verbose, max_grid) {
   checkmate::assert_data_frame(data)
   data_hist = data_hist
   if (is.null(data_hist)) {
@@ -111,15 +100,17 @@ BayesFBHborrow <- function(data, data_hist = NULL, initial_parameters, hyperpara
 #'  (time-to-event) and "event" (censoring), with the option of adding covariates
 #'  named "X_0_i" (where i should be a number/
 #' indicator of the covariate), for historical data
-#' @param initial_parameters list containing the initial values of c("J", "s_r",
-#' "mu", "sigma2", "tau", "lambda_0", "lambda", "beta_0", "beta")
+#' @param tuning_parameters list of "cprop_beta", "cprop_beta_0", "alpha", "Jmax",
+#' and "pi_b"
+#' @param initial_values list containing the initial values of c("J", "s_r",
+#' "mu", "sigma2", "tau", "lambda_0", "lambda", "beta_0", "beta") (optional)
 #' @param hyperparameters list containing the hyperparameters c("a_tau", "b_tau",
 #'  "c_tau", "d_tau","type", "p_0", "a_sigma", "b_sigma", "Jmax", "clam_smooth",
 #'  "cprop_beta", "phi", "pi_b"). Default is list("a_tau" = 1,"b_tau" = 1,"c_tau" = 1,
 #' "d_tau" = 0.001, "type" = "mix", "p_0" = 0.5, "a_sigma" = 2, "b_sigma" = 2,
 #' "Jmax" = 20, "clam_smooth" = 0.8, "cprop_beta" = 0.3, "phi" = 3, "pi_b" = 0.5)
-#' @param lambda_hyperparameters contains three hyperparameters (a, b and alpha)
-#' used for the update of lambda and lambda_0. Default is c(0.01, 0.01, 0.4)
+#' @param lambda_hyperparameters contains two hyperparameters (a_lambda and b_lambda)
+#' used for the update of lambda and lambda_0. Default is c(0.01, 0.01)
 #' @param iter number of iterations for MCMC sampler. Default is 2000
 #' @param warmup_iter number of warmup iterations (burn-in) for MCMC sampler. 
 #' Default is 2000
@@ -136,81 +127,62 @@ BayesFBHborrow <- function(data, data_hist = NULL, initial_parameters, hyperpara
 #' @examples
 #' set.seed(123)
 #' # Load the example data and write your initial values and hyper parameters
-#' data(weibull_cc, package = "BayesFBHborrow")
-#' data(weibull_hist, package = "BayesFBHborrow")
+#' data(piecewise_exp_cc, package = "BayesFBHborrow")
+#' data(piecewise_exp_hist, package = "BayesFBHborrow")
 #' 
-#' # Set your initial values and hyperparameters
-#' s <- c(0, quantile(weibull_cc$tte, c(0.25, 0.75, 1.0), names = FALSE))
-#' group_data_cc <- group_summary(weibull_cc[weibull_cc$X_trt == 0,]$tte, 
-#'                                weibull_cc[weibull_cc$X_trt == 0,]$event, 
-#'                                NULL, s)
-#' group_data_hist <- group_summary(weibull_hist$tte, weibull_hist$event, NULL, s)
-#' lambda_init_cc <- init_lambda_hyperparameters(group_data_cc, s) 
-#' lambda_init_hist <- init_lambda_hyperparameters(group_data_hist, s) 
-#' initial_param <- list("J" = 2, 
-#'                       "s_r" = s[2:3], # split points only (length J) 
-#'                       "mu" = 0, 
-#'                       "sigma2" = 2,
-#'                       "tau" = c( 1, 1, 1),
-#'                       "lambda_0" = mapply(stats::rgamma, n=1, 
-#'                                           shape = lambda_init_hist$shape, 
-#'                                           rate = lambda_init_hist$rate), 
-#'                       "lambda" = mapply(stats::rgamma, n=1, 
-#'                                         shape = lambda_init_cc$shape, 
-#'                                         rate = lambda_init_cc$rate), 
-#'                        "beta_0" = NULL,
-#'                        "beta" = 0)
-#'
+#' # Set your hyperparameters and tuning parameters
 #' hyper <-  list("a_tau" = 1, 
 #'                "b_tau" = 0.001,
 #'                "c_tau" = 1,
-#'                "d_tau" = 10, 
-#'                "type" = "mix",
+#'                "d_tau" = 1, 
+#'                "type" = "all",
 #'                "p_0" = 0.5, 
 #'                "a_sigma" = 2,
 #'                "b_sigma" = 2,
-#'                "Jmax" = 5, 
-#'                "clam_smooth" = 0.5, 
-#'                "cprop_beta" = 0.3,
-#'                "phi" = 2, 
-#'                "pi_b" = 0.5)
-#'
-#' out <- BayesFBHborrow(weibull_cc, weibull_hist, initial_param, hyper,
-#'                 iter = 5, warmup_iter = 1)
+#'                "clam_smooth" = 0.5,
+#'                "phi" = 3)
+#' 
+#' tuning_parameters <- list("Jmax" = 5,
+#'                           "pi_b" = 0.5,
+#'                           "cprop_beta" = 0.5,
+#'                           "alpha" = 0.4)
+#'                           
+#' # Set initial values to default
+#' out <- BayesFBHborrow(piecewise_exp_cc, piecewise_exp_hist, tuning_parameters,
+#'                       initial_values = NULL, hyper, iter = 5, warmup_iter = 1)
 #' 
 #' # Create a summary of the output
-#' summary(out, estimator = "out_fixed")
+#' # summary(out, estimator = "out_fixed")
 #' 
 #' # Plot some of the estimates
+#' # Do beta (trace), s (hist) and lambda (matrix)
 #' trace <- plot(out, 1:5, estimator = "beta_1", type = "trace")
 #' hist <- plot(out, estimator = "J", type = "hist")
 #' smoothed_baseline_hazard <- plot(out, 1:2000, estimator = "out_slam", 
 #'                                  type = "matrix")
 BayesFBHborrow.WBorrow <- function(data, data_hist, 
-                 initial_parameters,
-                 hyperparameters = list(
-                   "a_tau" = 1,
-                   "b_tau" = 0.001,
-                   "c_tau" = 1,
-                   "d_tau" = 1,
-                   "type" = "mix",
-                   "p_0" = 0.8,
-                   "a_sigma" = 1,
-                   "b_sigma" = 1,
-                   "Jmax" = 5,
-                   "clam_smooth" = 0.8,
-                   "cprop_beta" = 0.3,
-                   "phi" = 3, 
-                   "pi_b" = 0.5), 
-                 lambda_hyperparameters = list(
-                   "a_lambda" = 0.01,
-                   "b_lambda" = 0.01,
-                   "alpha" = 0.4),
-                 iter = 150, 
-                 warmup_iter = 10,
-                 refresh = 0,
-                 verbose = FALSE,
-                 max_grid = 2000) {
+                                   tuning_parameters,
+                                   initial_values = NULL,
+                                   hyperparameters = list(
+                                     "a_tau" = 1,
+                                     "b_tau" = 0.001,
+                                     "c_tau" = 1,
+                                     "d_tau" = 1,
+                                     "type" = "mix",
+                                     "p_0" = 0.8,
+                                     "a_sigma" = 1,
+                                     "b_sigma" = 1,
+                                     "phi" = 3, 
+                                     "clam_smooth" = 0.8),
+                                   lambda_hyperparameters = list(
+                                     "a_lambda" = 0.01,
+                                     "b_lambda" = 0.01
+                                   ),
+                                   iter = 150, 
+                                   warmup_iter = 10,
+                                   refresh = 0,
+                                   verbose = FALSE,
+                                   max_grid = 2000) {
   checkmate::assert_flag(verbose) # user choice on output
   checkmate::assert_data_frame(data, any.missing = FALSE)
   checkmate::assert_names(
@@ -235,26 +207,36 @@ BayesFBHborrow.WBorrow <- function(data, data_hist,
   checkmate::assert_names(
     names(hyperparameters),
     must.include = c("a_tau", "b_tau", "c_tau", "d_tau","type", "p_0", "a_sigma",
-                     "b_sigma", "Jmax", "clam_smooth", "cprop_beta", "phi", "pi_b")
+                     "b_sigma", "clam_smooth", "phi")
+  )
+  
+  ## Tuning parameters
+  checkmate::assert_names(
+    names(tuning_parameters),
+    must.include = c("cprop_beta", "pi_b", "alpha", "Jmax")
   )
   
   ## Initial values
-  checkmate::assert_names(
-    names(initial_parameters),
-    must.include = c("J", "s_r", "mu", "sigma2", "tau", "lambda_0", 
-                     "lambda", "beta_0", "beta")
-  )
+  if (!is.null(initial_values)) {
+    checkmate::assert_names(
+      names(initial_values),
+      must.include = c("J", "s_r", "mu", "sigma2", "tau", "lambda_0", 
+                       "lambda", "beta_0", "beta")
+    )
+  }
   
   # Call the Gibbs_MH_WBorrow function with the input data
   X <- as.matrix(data[grepl("X", names(data))])
   
   # Call the .input_check function
   if (verbose) {
-    s <- .input_check(data$tte, data_hist$tte, X, X_0, hyperparameters, initial_parameters)
+    s <- .input_check(data$tte, data_hist$tte, X, X_0, tuning_parameters, 
+                      initial_values, hyperparameters)
     message((paste0(s, "\nInputs look ok\n")))
   } else {
     suppressMessages(
-      .input_check(data$tte, data_hist$tte, X, X_0, hyperparameters, initial_parameters)
+      .input_check(data$tte, data_hist$tte, X, X_0, tuning_parameters, 
+                   initial_values, hyperparameters)
     )
   }
   if (verbose) {
@@ -264,7 +246,8 @@ BayesFBHborrow.WBorrow <- function(data, data_hist,
   
   out <- GibbsMH(Y = data$tte, I = data$event, X = X, 
                             Y_0 = data_hist$tte, I_0 = data_hist$event, X_0 = X_0,
-                            initial_parameters = initial_parameters,
+                            tuning_parameters = tuning_parameters,
+                            initial_values = initial_values,
                             hyperparameters = hyperparameters, 
                             lambda_hyperparameters = lambda_hyperparameters,
                             iter = iter, 
@@ -275,7 +258,7 @@ BayesFBHborrow.WBorrow <- function(data, data_hist,
     # print diagnostics
     beta_acc_ratio <- out$beta_move/(warmup_iter + iter)
     message("MCMC sampler complete")
-    message(paste("Beta acceptance ratio: ", beta_acc_ratio))
+    message(paste0("beta_",c(1:length(beta_acc_ratio)) ," acceptance ratio: ", beta_acc_ratio, collapse = "\n"))
   }
 
   class(out) <- c("BayesFBHborrow", "list")
@@ -291,12 +274,13 @@ BayesFBHborrow.WBorrow <- function(data, data_hist,
 #' and "event" (event indicator), and covariates "X_i" (where i should be a number/
 #' indicator of the covariate)
 #' @param data_hist NULL (not used)
-#' @param initial_parameters list containing the initial values of c("J", "s_r",
-#' "mu", "sigma2", "lambda", beta")
+#' @param tuning_parameters list of "cprop_beta", "Jmax", and "pi_b"
+#' @param initial_values list containing the initial values of c("J", "s_r",
+#' "mu", "sigma2", "lambda", beta") (optional)
 #' @param hyperparameters list containing the hyperparameters c("a_sigma",
-#' "b_sigma", "Jmax", "clam_smooth", "cprop_beta", "phi", "pi_b"). Default is 
+#' "b_sigma", "Jmax", "clam_smooth", "cprop_beta", "phi"). Default is 
 #' list("a_sigma" = 2, "b_sigma" = 2, "Jmax" = 20, "clam_smooth" = 0.8, 
-#' "cprop_beta" = 0.3, "phi" = 3, "pi_b" = 0.5)
+#' "cprop_beta" = 0.3, "phi" = 3)
 #' @param lambda_hyperparameters contains two hyperparameters ("a" and "b") used for
 #' the update of lambda, default is c(0.01, 0.01)
 #' @param iter number of iterations for MCMC sampler. Default is 2000
@@ -315,85 +299,38 @@ BayesFBHborrow.WBorrow <- function(data, data_hist,
 #' @examples
 #' set.seed(123)
 #' # Load the example data and write your initial values and hyper parameters
-#' # For this example we want to calculate the Effective Historical Sample Size
-#' # (EHSS), and therefor we need to run the sampler for both with and without
-#' # borrowing.
-#' data(weibull_cc, package = "BayesFBHborrow")
-#' data(weibull_hist, package = "BayesFBHborrow")
+#' data(piecewise_exp_cc, package = "BayesFBHborrow")
 #' 
-#' # Set your initial values and hyperparameters
-#' s <- c(0, quantile(weibull_cc$tte, c(0.25, 0.75, 1.0), names = FALSE))
-#' group_data_cc <- group_summary(weibull_cc[weibull_cc$X_trt == 0,]$tte, 
-#'                                weibull_cc[weibull_cc$X_trt == 0,]$event, 
-#'                                NULL, s)
-#' group_data_hist <- group_summary(weibull_hist$tte, weibull_hist$event, NULL, s)
-#' lambda_init_cc <- init_lambda_hyperparameters(group_data_cc, s) 
-#' lambda_init_hist <- init_lambda_hyperparameters(group_data_hist, s) 
-#' initial_param <- list("J" = 2, 
-#'                       "s_r" = s[2:3], # split points only (length J) 
-#'                       "mu" = 0, 
-#'                       "sigma2" = 2,
-#'                       "tau" = c( 1, 1, 1),
-#'                       "lambda_0" = mapply(stats::rgamma, n=1, 
-#'                                           shape = lambda_init_hist$shape, 
-#'                                           rate = lambda_init_hist$rate), 
-#'                       "lambda" = mapply(stats::rgamma, n=1, 
-#'                                         shape = lambda_init_cc$shape, 
-#'                                         rate = lambda_init_cc$rate), 
-#'                        "beta_0" = NULL,
-#'                        "beta" = 0)
-#'
-#' hyper <-  list("a_tau" = 1, 
-#'                "b_tau" = 0.001,
-#'                "c_tau" = 1,
-#'                "d_tau" = 10, 
-#'                "type" = "mix",
-#'                "p_0" = 0.5, 
-#'                "a_sigma" = 2,
+#' # Set your hyperparameters and tuning parameters
+#' hyper <-  list("a_sigma" = 2,
 #'                "b_sigma" = 2,
-#'                "Jmax" = 5, 
-#'                "clam_smooth" = 0.5, 
-#'                "cprop_beta" = 0.3,
-#'                "phi" = 2, 
-#'                "pi_b" = 0.5)
-#'        
-#' initial_param_NB <- list("J" = 2, 
-#'                       "s_r" = s[2:3], # split points only (length J) 
-#'                       "mu" = 0, 
-#'                       "sigma2" = 2,
-#'                       "lambda" = mapply(stats::rgamma, n=1, 
-#'                                         shape = lambda_init_cc$shape, 
-#'                                         rate = lambda_init_cc$rate), 
-#'                        "beta" = 0)
-#'
-#' hyper_NB <-  list("a_sigma" = 2,
-#'                "b_sigma" = 2,
-#'                "Jmax" = 5, 
-#'                "clam_smooth" = 0.5, 
-#'                "cprop_beta" = 0.3,
-#'                "phi" = 2, 
-#'                "pi_b" = 0.5)         
-#'                     
-#' output_Noborrowing <- BayesFBHborrow(weibull_cc, NULL, initial_param_NB, hyper_NB,
-#'                 iter = 10, warmup_iter = 1)
+#'                "clam_smooth" = 0.5,
+#'                "phi" = 3)
+#' 
+#' tuning_parameters <- list("Jmax" = 5,
+#'                           "pi_b" = 0.5,
+#'                           "cprop_beta" = 0.5)
+#'                           
+#' # Set initial values to default
+#' out <- BayesFBHborrow(piecewise_exp_cc, NULL, tuning_parameters,
+#'                       initial_values = NULL, hyper, iter = 5, warmup_iter = 1)
 BayesFBHborrow.NoBorrow <- function(data, data_hist = NULL,
-                             initial_parameters,
-                             hyperparameters = list(
-                               "a_sigma" = 1,
-                               "b_sigma" = 1,
-                               "Jmax" = 5,
-                               "clam_smooth" = 0.8,
-                               "cprop_beta" = 0.3,
-                               "phi" = 3, 
-                               "pi_b" = 0.5), 
-                             lambda_hyperparameters = list(
-                               "a_lambda" = 0.01,
-                               "b_lambda" = 0.01),
-                             iter = 150, 
-                             warmup_iter = 10,
-                             refresh = 0,
-                             verbose = FALSE,
-                             max_grid = 2000) {
+                                    tuning_parameters,
+                                    initial_values = NULL,
+                                    hyperparameters = list(
+                                      "a_sigma" = 1,
+                                      "b_sigma" = 1,
+                                      "phi" = 3, 
+                                      "clam_smooth" = 0.8),
+                                    lambda_hyperparameters = list(
+                                      "a_lambda" = 0.01,
+                                      "b_lambda" = 0.01
+                                    ),
+                                    iter = 150, 
+                                    warmup_iter = 10,
+                                    refresh = 0,
+                                    verbose = FALSE,
+                                    max_grid = 2000) {
   checkmate::assert_flag(verbose) # user choice on output
   checkmate::assert_data_frame(data, any.missing = FALSE)
   checkmate::assert_names(
@@ -405,43 +342,54 @@ BayesFBHborrow.NoBorrow <- function(data, data_hist = NULL,
   ## Hyperparameters
   checkmate::assert_names(
     names(hyperparameters),
-    must.include = c("a_sigma", "b_sigma", "Jmax", "clam_smooth", "cprop_beta",
-                     "phi", "pi_b")
+    must.include = c("a_sigma", "b_sigma", "clam_smooth", "phi")
+  )
+  
+  ## Tuning parameters
+  checkmate::assert_names(
+    names(tuning_parameters),
+    must.include = c("cprop_beta", "pi_b", "Jmax")
   )
   
   ## Initial values
-  checkmate::assert_names(
-    names(initial_parameters),
-    must.include = c("J", "s_r", "mu", "sigma2", "lambda", "beta")
-  )
+  if (!is.null(initial_values)) {
+    checkmate::assert_names(
+      names(initial_values),
+      must.include = c("J", "s_r", "mu", "sigma2", "lambda", "beta")
+    )
+  }
   
   # Call the Gibbs_MH_WBorrow function with the input data
   X <- as.matrix(data[grepl("X", names(data))])
   
   # Call the .input_check function
   if (verbose) {
-    s <- .input_check(data$tte, NULL, X, NULL, hyperparameters, initial_parameters)
+    s <- .input_check(data$tte, NULL, X, NULL, tuning_parameters, 
+                      initial_values, hyperparameters)
     message((paste0(s, "\nInputs look ok\n")))
   } else {
     suppressMessages(
-      .input_check(data$tte, NULL, X, NULL, hyperparameters, initial_parameters)
+      .input_check(data$tte, NULL, X, NULL, tuning_parameters, 
+                   initial_values, hyperparameters)
     )
   }
 
   out <- GibbsMH(Y = data$tte, I = data$event, X = X, 
-                             initial_parameters = initial_parameters,
-                             hyperparameters = hyperparameters,
-                             lambda_hyperparameters = lambda_hyperparameters,
-                             iter = iter,
-                             warmup_iter = warmup_iter,
-                             refresh = refresh,
-                             max_grid = max_grid
-                             )
+                 tuning_parameters = tuning_parameters,
+                 initial_values = initial_values,
+                 hyperparameters = hyperparameters,
+                 lambda_hyperparameters = lambda_hyperparameters,
+                 iter = iter,
+                 warmup_iter = warmup_iter,
+                 refresh = refresh,
+                 max_grid = max_grid
+                 )
+  
   if (verbose) {
     # print diagnostics
     beta_acc_ratio <- out$beta_move/(warmup_iter + iter)
     message("MCMC sampler complete")
-    message(paste("Beta acceptance ratio: ", beta_acc_ratio))
+    message(paste0("beta_",c(1:length(beta_acc_ratio)) ," acceptance ratio: ", beta_acc_ratio, collapse = "\n"))
   }
 
   class(out) <- c("BayesFBHborrow", "list")

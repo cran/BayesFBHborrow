@@ -4,7 +4,15 @@
 \alias{.input_check}
 \title{Input checker}
 \usage{
-.input_check(Y, Y_0, X, X_0, hyperparameters, initial_param)
+.input_check(
+  Y,
+  Y_0,
+  X,
+  X_0,
+  tuning_parameters,
+  initial_values = NULL,
+  hyperparameters
+)
 }
 \arguments{
 \item{Y}{current time-to-event data}
@@ -15,9 +23,11 @@
 
 \item{X_0}{design Matrix for historical data}
 
-\item{hyperparameters}{list of hyperparameters}
+\item{tuning_parameters}{list of tuning parameters}
 
-\item{initial_param}{list of initial parameters}
+\item{initial_values}{list of initial values (optional)}
+
+\item{hyperparameters}{list of hyperparameters}
 }
 \value{
 a print statement

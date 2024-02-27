@@ -21,7 +21,7 @@
   clam,
   a_lam = 0.01,
   b_lam = 0.01,
-  count_lambda_0 = 0,
+  lambda_0_count = 0,
   lambda_0_move = 0
 )
 }
@@ -58,7 +58,7 @@
 
 \item{b_lam}{lambda hyperparameter, default is 0.01}
 
-\item{count_lambda_0}{number of total moves for lambda_0}
+\item{lambda_0_count}{number of total moves for lambda_0}
 
 \item{lambda_0_move}{number of accepted moves for lambda_0}
 }

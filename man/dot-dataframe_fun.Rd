@@ -13,7 +13,7 @@
 
 \item{X}{design Matrix}
 
-\item{s}{split point locations, including start and end (length J+2)}
+\item{s}{split point locations, including start and end (length J + 2)}
 
 \item{lambda}{baseline Hazards (length J+1)}
 

@@ -140,312 +140,104 @@ test_that(".log_likelihood operates as it should", {
   
 })
 
+Y <- c(1, 20, 30)
+Y_0 <- c(1, 20, 31)
+X <- matrix(1, nrow = 3, ncol = 1)
+X_0 <- NULL
+tuning_parameters <- list("cprop_beta" = 1,
+                          "Jmax" = 10,
+                          "pi_b" = 0.5,
+                          "alpha" = 0.4)
+hyper <- list("a_tau" = 1, 
+              "b_tau" = 1, 
+              "c_tau" = 1, 
+              "d_tau" = 1, 
+              "p_0" = 0.1, 
+              "clam_smooth" = 0.7, 
+              "type" = "mix", 
+              "a_sigma" = 1, 
+              "b_sigma" = 2, 
+              "phi" = 2)
+
+initial_values <- list("J" = 2, 
+                       "s_r" = c(5, 10), 
+                       "mu" = 5, 
+                       "sigma2" = 0.5, 
+                       "tau" = c(0.1, 0.2, 0.3), 
+                       "lambda_0" = c(0.1, 0.2, 0.3), 
+                       "lambda" = c(0.1, 0.2, 0.3), 
+                       "beta_0" = NULL, 
+                       "beta" = -0.5) 
+
 test_that("Input check: valid inputs do not produce errors/warnings", {
-  Y <- c(1, 20, 30)
-  Y_0 <- c(1, 20, 31)
-  X <- matrix(1, nrow = 3, ncol = 1)
-  X_0 <- NULL
-  hyper <- list("a_tau" = 1, 
-                "b_tau" = 1, 
-                "c_tau" = 1, 
-                "d_tau" = 1, 
-                "p_0" = 0.1, 
-                "clam_smooth" = 0.7, 
-                "pi_b" = 0.3, 
-                "type" = "mix", 
-                "a_sigma" = 1, 
-                "b_sigma" = 2, 
-                "cprop_beta" = 1, 
-                "phi" = 2)
-  initial_param <- list("J" = 2, 
-                        "s_r" = c(5, 10), 
-                        "mu" = 5, 
-                        "sigma2" = 0.5, 
-                        "tau" = c(0.1, 0.2, 0.3), 
-                        "lambda_0" = c(0.1, 0.2, 0.3), 
-                        "lambda" = c(0.1, 0.2, 0.3), 
-                        "beta_0" = NULL, 
-                        "beta" = -0.5) 
- expect_no_error(.input_check(Y, Y_0, X, X_0, hyper, initial_param))
+ expect_no_error(.input_check(Y, Y_0, X, X_0, tuning_parameters, NULL, hyper))
+ expect_no_error(.input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, hyper))
 })
 
 test_that("Input check: Negative hyperparameter values produce errors", {
-  Y <- c(1, 20, 30)
-  Y_0 <- c(1, 20, 31)
-  X <- matrix(1, nrow = 3, ncol = 1)
-  X_0 <- NULL
-  hyper <- list(a_tau = 1, 
-                b_tau = 1, 
-                c_tau = 1, 
-                d_tau = 1, 
-                p_0 = 0.1, 
-                clam_smooth = 0.7, 
-                pi_b = 0.3, 
-                type = "uni", 
-                a_sigma = -1, # error
-                b_sigma = 2, 
-                cprop_beta = 1, 
-                phi = 2)
-  initial_param <- list(J = 2, 
-                        s_r = c(5, 10), 
-                        mu = 5, 
-                        sigma2 = 0.5, 
-                        tau = c(0.1, 0.2, 0.3), 
-                        lambda_0 = c(0.1, 0.2, 0.3), 
-                        lambda = c(0.1, 0.2, 0.3), 
-                        beta_0 = NULL, 
-                        beta = -0.5) 
-  expect_error(.input_check(Y, Y_0, X, X_0, hyper, initial_param), regexp = "negative")
+  hyper$a_sigma <- -1
+  
+  expect_error(.input_check(Y, Y_0, X, X_0,  tuning_parameters, NULL, hyper), regexp = "negative")
+  expect_error(.input_check(Y, Y_0, X, X_0,  tuning_parameters, initial_values, hyper), regexp = "negative")
 })
 
 test_that("Input check: Hyperparameters outside [0, 1] range produce errors", {
-  Y <- c(1, 20, 30)
-  Y_0 <- c(1, 20, 31)
-  X <- matrix(1, nrow = 3, ncol = 1)
-  X_0 <- NULL
-  hyper <- list(a_tau = 1, 
-                b_tau = 1, 
-                c_tau = 1, 
-                d_tau = 1, 
-                p_0 = 0.1, 
-                clam_smooth = 0.7, 
-                pi_b = 1.3, #error
-                type = "abc", 
-                a_sigma = 1, 
-                b_sigma = 2, 
-                cprop_beta = 1, 
-                phi = 2)
-  initial_param <- list(J = 2, 
-                        s_r = c(5, 10), 
-                        mu = 5, 
-                        sigma2 = 0.5, 
-                        tau = c(0.1, 0.2, 0.3), 
-                        lambda_0 = c(0.1, 0.2, 0.3), 
-                        lambda = c(0.1, 0.2, 0.3), 
-                        beta_0 = NULL, 
-                        beta = -0.5) 
-  expect_error(.input_check(Y, Y_0, X, X_0, hyper, initial_param), regexp = "range")
+  tuning_parameters$pi_b <- 1.3 #error
+
+  expect_error(.input_check(Y, Y_0, X, X_0, tuning_parameters, NULL, hyper), regexp = "range")
+  expect_error(.input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, hyper), regexp = "range")
 })
 
 test_that("Input check: borrowing type 'uni' with given c_tau and d_tau produces a warning", {
-  Y <- c(1, 20, 30)
-  Y_0 <- c(1, 20, 31)
-  X <- matrix(1, nrow = 3, ncol = 1)
-  X_0 <- NULL
-  hyper <- list(a_tau = 1, 
-                b_tau = 1, 
-                c_tau = 1, 
-                d_tau = 1, 
-                p_0 = 0.1, 
-                clam_smooth = 0.7, 
-                pi_b = 0.3, 
-                type = "uni", 
-                a_sigma = 1, 
-                b_sigma = 2, 
-                cprop_beta = 1, 
-                phi = 2)
-  initial_param <- list(J = 2, 
-                        s_r = c(5, 10), 
-                        mu = 5, 
-                        sigma2 = 0.5, 
-                        tau = c(0.1, 0.2, 0.3), 
-                        lambda_0 = c(0.1, 0.2, 0.3), 
-                        lambda = c(0.1, 0.2, 0.3), 
-                        beta_0 = NULL, 
-                        beta = -0.5) 
-  expect_message(.input_check(Y, Y_0, X, X_0, hyper, initial_param), "Borrowing is 'uni'")
+  hyper$type <- "uni"
+  expect_message(.input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, hyper), "Borrowing is 'uni'")
 })
 
 test_that("Input check: s_r values greater than maxSj produce errors", {
-  Y <- c(1, 20, 30)
-  Y_0 <- c(1, 20, 31)
-  X <- matrix(1, nrow = 3, ncol = 1)
-  X_0 <- NULL
-  hyper <- list(a_tau = 1, 
-                b_tau = 1, 
-                c_tau = 1, 
-                d_tau = 1, 
-                p_0 = 0.1, 
-                clam_smooth = 0.7, 
-                pi_b = 0.3, 
-                type = "mix", 
-                a_sigma = 1, 
-                b_sigma = 2, 
-                cprop_beta = 1, 
-                phi = 2)
-  initial_param <- list(J = 2, 
-                        s_r = c(5, 50), #error
-                        mu = 5, 
-                        sigma2 = 0.5, 
-                        tau = c(0.1, 0.2, 0.3), 
-                        lambda_0 = c(0.1, 0.2, 0.3), 
-                        lambda = c(0.1, 0.2, 0.3), 
-                        beta_0 = NULL, 
-                        beta = -0.5) 
-  expect_error(.input_check(Y, Y_0, X, X_0, hyper, initial_param), regexp = "s_r must be <")
+  initial_values$s_r = c(5, 50)
+  expect_error(.input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, 
+                            hyper), regexp = "s_r must be <")
 })
 
 test_that("Input check: negative sigma2 value produces an error", {
-  Y <- c(1, 20, 30)
-  Y_0 <- c(1, 20, 31)
-  X <- matrix(1, nrow = 3, ncol = 1)
-  X_0 <- NULL
-  hyper <- list(a_tau = 1, 
-                b_tau = 1, 
-                c_tau = 1, 
-                d_tau = 1, 
-                p_0 = 0.1, 
-                clam_smooth = 0.7, 
-                pi_b = 0.3, 
-                type = "mix", 
-                a_sigma = 1, 
-                b_sigma = 2, 
-                cprop_beta = 1, 
-                phi = 2)
-  initial_param <- list(J = 2, 
-                        s_r = c(5, 10), 
-                        mu = 5, 
-                        sigma2 = -0.5, #error
-                        tau = c(0.1, 0.2, 0.3), 
-                        lambda_0 = c(0.1, 0.2, 0.3), 
-                        lambda = c(0.1, 0.2, 0.3), 
-                        beta_0 = NULL, 
-                        beta = -0.5) 
-  expect_error(.input_check(Y, Y_0, X, X_0, hyper, initial_param), regexp = "sigma2 must be > 0")
+  initial_values$sigma2 <- -0.5
+  expect_error(.input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, hyper), regexp = "sigma2 must be > 0")
 })
 
 test_that("Input check: incorrect dimensions for tau produce error", {
-  Y <- c(1, 20, 30)
-  Y_0 <- c(1, 20, 31)
-  X <- matrix(1, nrow = 3, ncol = 1)
-  X_0 <- NULL
-  hyper <- list(a_tau = 1, 
-                b_tau = 1, 
-                c_tau = 1, 
-                d_tau = 1, 
-                p_0 = 0.1, 
-                clam_smooth = 0.7, 
-                pi_b = 0.3, 
-                type = "mix", 
-                a_sigma = 1, 
-                b_sigma = 2, 
-                cprop_beta = 1, 
-                phi = 2)
-  initial_param <- list(J = 2, 
-                        s_r = c(5, 10), 
-                        mu = 5, 
-                        sigma2 = 0.5, 
-                        tau = c(0.1, 0.2, 0.3, 0.1), # error
-                        lambda_0 = c(0.1, 0.2, 0.3, 0.1), # error
-                        lambda = c(0.1, 0.2, 0.3, 0.1), # error
-                        beta_0 = NULL, 
-                        beta = -0.5) 
-  expect_error(.input_check(Y, Y_0, X, X_0, hyper, initial_param), regexp = "dimension")
+ initial_values$tau = c(0.1, 0.2, 0.3, 0.1)
+ expect_error(.input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, hyper), regexp = "dimension")
+
+ initial_values$lambda = c(0.1, 0.2, 0.3, 0.1)
+ expect_error(.input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, hyper), regexp = "dimension")
 })
 
 test_that("Input check: incorrect dimensions for lambda produce error", {
-  Y <- c(1, 20, 30)
-  Y_0 <- c(1, 20, 31)
-  X <- matrix(1, nrow = 3, ncol = 1)
-  X_0 <- NULL
-  hyper <- list(a_tau = 1, 
-                b_tau = 1, 
-                c_tau = 1, 
-                d_tau = 1, 
-                p_0 = 0.1, 
-                clam_smooth = 0.7, 
-                pi_b = 0.3, 
-                type = "mix", 
-                a_sigma = 1, 
-                b_sigma = 2, 
-                cprop_beta = 1, 
-                phi = 2)
-  initial_param <- list(J = 2, 
-                        s_r = c(5, 10), 
-                        mu = 5, 
-                        sigma2 = 0.5, 
-                        tau = c(0.1, 0.2, 0.3), 
-                        lambda_0 = c(0.1, 0.2, 0.3, 0.1), # error
-                        lambda = c(0.1, 0.2, 0.3),
-                        beta_0 = NULL, 
-                        beta = -0.5) 
-  expect_error(.input_check(Y, Y_0, X, X_0, hyper, initial_param), regexp = "dimension")
+  initial_values$lambda_0 = c(0.1, 0.2, 0.3, 0.1)
+  expect_error(.input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, hyper), regexp = "dimension")
 })
 
 test_that("Input check: Negative lambdas renders error", {
-  Y <- c(2, 20, 30)
-  Y_0 <- c(1, 20, 31)
-  X <- matrix(1, nrow = 3, ncol = 1)
-  X_0 <- NULL
-  hyper <- list(a_tau = 1, 
-                b_tau = 1, 
-                c_tau = 1, 
-                d_tau = 1, 
-                p_0 = 0.1, 
-                clam_smooth = 0.7, 
-                pi_b = 0.3, 
-                type = "mix", 
-                a_sigma = 1, 
-                b_sigma = 2, 
-                cprop_beta = 1, 
-                phi = 2)
-  initial_param <- list(J = 2, 
-                        s_r = c(5, 10), 
-                        mu = 5, 
-                        sigma2 = 0.5, 
-                        tau = c(0.1, 0.2, 0.3), 
-                        lambda_0 = c(-0.1, 0.2, 0.3), #error
-                        lambda = c(0.1, 0.2, 0.3), 
-                        beta_0 = NULL, 
-                        beta = -0.5) 
-  expect_error(.input_check(Y, Y_0, X, X_0, hyper, initial_param), 
-               regexp = "baseline hazard")
-  initial_param$lambda <- c(-0.1, 0.2, 0.3)
-  expect_error(.input_check(Y, Y_0, X, X_0, hyper, initial_param), 
-               regexp = "baseline hazard")
+  initial_values$lambda <- c(-0.1, 0.2, 0.3)
+  expect_error(.input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, hyper), regexp = "baseline hazard")
 })
 
 test_that("Input check: throws error for wrong dimension of beta/beta_0 when adding covariates", {
-  Y <- c(2, 20, 30)
-  Y_0 <- c(1, 20, 31)
-  X <- matrix(c(1,0, 1), nrow = 3, ncol = 1)
   X_0 <- matrix(c(1,0, 0), nrow = 3, ncol = 1)
-  hyper <- list(a_tau = 1, 
-                b_tau = 1, 
-                c_tau = 1, 
-                d_tau = 1, 
-                p_0 = 0.1, 
-                clam_smooth = 0.7, 
-                pi_b = 0.3, 
-                type = "mix", 
-                a_sigma = 1, 
-                b_sigma = 2, 
-                cprop_beta = 1, 
-                phi = 2)
-  initial_param <- list(J = 2, 
-                        s_r = c(5, 10), 
-                        mu = 5, 
-                        sigma2 = 0.5, 
-                        tau = c(0.1, 0.2, 0.3), 
-                        lambda_0 = c(0.1, 0.2, 0.3), 
-                        lambda = c(0.1, 0.2, 0.3), 
-                        beta_0 = NULL, # ERROR
-                        beta = 0.5) 
-  expect_error(.input_check(Y, Y_0, X, X_0, hyper, initial_param), 
-               regexp = "beta_0")
-  initial_param$lambda <- c(-0.1, 0.2, 0.3)
-  initial_param <- list(J = 2, 
-                        s_r = c(5, 10), 
-                        mu = 5, 
-                        sigma2 = 0.5, 
-                        tau = c(0.1, 0.2, 0.3), 
-                        lambda_0 = c(0.1, 0.2, 0.3),
-                        lambda = c(0.1, 0.2, 0.3), 
-                        beta_0 = 2, 
-                        beta = c(1, 2)) # ERROR
-  expect_error(.input_check(Y, Y_0, X, X_0, hyper, initial_param), 
-               regexp = "beta")
+  tuning_parameters$cprop_beta_0 <- 0.5
+  initial_values$beta_0 <- NULL
+  expect_error(.input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, hyper), regexp = "dimension")
   
+  initial_values$beta = c(1, 2)
+  expect_error(.input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, hyper), regexp = "beta")
+  
+})
+
+
+test_that("Input check for cprop_beta dimensions", {
+  tuning_parameters$cprop_beta = c(1, 1)
+  expect_error(.input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, hyper),
+               regexp = "dimension mismatch")
 })
 
 test_that("group_summary() is working as it should", {
@@ -504,64 +296,22 @@ test_that("Input check runs for only historical/current data (NoBorrow)" ,{
   Y_0 <- NULL
   X <- matrix(1, nrow = 3, ncol = 1)
   X_0 <- NULL
-  hyper <- list(clam_smooth = 0.7, 
-                pi_b = 0.3, 
-                a_sigma = 1, 
-                b_sigma = 2, 
-                cprop_beta = 1, 
-                phi = 2)
-  initial_param <- list(J = 2, 
-                        s_r = c(5, 10), 
-                        mu = 5, 
-                        sigma2 = 0.5, 
-                        lambda = c(0.1, 0.2, 0.3), # error
-                        beta = -0.5) 
-  expect_no_error(.input_check(Y, Y_0, X, X_0, hyper, initial_param))
-  
-  s <- .input_check(Y, Y_0, X, X_0, hyper, initial_param)
-  expect_equal(s, "No borrowing")
-})
-
-test_that("Input check for cprop_beta dimensions", {
-  Y <- c(1, 20, 30)
-  Y_0 <- c(1, 20, 31)
-  X <- matrix(1, nrow = 3, ncol = 3)
-  X_0 <- NULL
-  hyper <- list("a_tau" = 1, 
-                "b_tau" = 1, 
-                "c_tau" = 1, 
-                "d_tau" = 1, 
-                "p_0" = 0.1, 
-                "clam_smooth" = 0.7, 
-                "pi_b" = 0.3, 
-                "type" = "mix", 
-                "a_sigma" = 1, 
+  tuning_parameters <- list("cprop_beta" = 1,
+                            "Jmax" = 10,
+                            "pi_b" = 0.5)
+  hyper <- list("a_sigma" = 1, 
                 "b_sigma" = 2, 
-                "cprop_beta" = c(1, 1, 1), 
                 "phi" = 2)
-  initial_param <- list("J" = 2, 
-                        "s_r" = c(5, 10), 
-                        "mu" = 5, 
-                        "sigma2" = 0.5, 
-                        "tau" = c(0.1, 0.2, 0.3), 
-                        "lambda_0" = c(0.1, 0.2, 0.3), 
-                        "lambda" = c(0.1, 0.2, 0.3), 
-                        "beta_0" = NULL, 
-                        "beta" = c(-1, 1, 1)) 
-  expect_no_error(.input_check(Y, Y_0, X, X_0, hyper, initial_param))
   
-  hyper <- list("a_tau" = 1, 
-                "b_tau" = 1, 
-                "c_tau" = 1, 
-                "d_tau" = 1, 
-                "p_0" = 0.1, 
-                "clam_smooth" = 0.7, 
-                "pi_b" = 0.3, 
-                "type" = "mix", 
-                "a_sigma" = 1, 
-                "b_sigma" = 2,
-                "cprop_beta" = c(1, 1), #
-                "phi" = 2)
-  expect_error(.input_check(Y, Y_0, X, X_0, hyper, initial_param),
-                 regexp = "dimension mismatch")
+  initial_values <- list("J" = 2, 
+                         "s_r" = c(5, 10), 
+                         "mu" = 5, 
+                         "sigma2" = 0.5, 
+                         "lambda" = c(0.1, 0.2, 0.3), 
+                         "beta" = -0.5) 
+  
+  expect_no_error(.input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, hyper))
+  
+  s <- .input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, hyper)
+  expect_equal(s, "No borrowing")
 })
