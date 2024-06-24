@@ -12,7 +12,6 @@ GibbsMH(
   I_0 = NULL,
   X_0 = NULL,
   tuning_parameters,
-  initial_values,
   hyperparameters,
   lambda_hyperparameters,
   iter,
@@ -34,17 +33,13 @@ GibbsMH(
 
 \item{X_0}{historical design matrix, default is NULL}
 
-\item{tuning_parameters}{list of "cprop_beta", "cprop_beta_0", "alpha", "Jmax",
-and "pi_b"}
-
-\item{initial_values}{list containing the initial values of c("J", "s_r",
-"mu", "sigma2", "tau", "lambda_0", "lambda", "beta_0", "beta") (optional)}
+\item{tuning_parameters}{list of "cprop_beta" ("cprop_beta_0" for historical data), "alpha", "Jmax",
+and "pi_b".}
 
 \item{hyperparameters}{list containing the hyperparameters c("a_tau", "b_tau",
- "c_tau", "d_tau","type", "p_0", "a_sigma", "b_sigma", "Jmax", "clam_smooth",
- "cprop_beta", "phi", "pi_b"). Default is list("a_tau" = 1,"b_tau" = 1,"c_tau" = 1,
-"d_tau" = 0.001, "type" = "mix", "p_0" = 0.5, "a_sigma" = 2, "b_sigma" = 2,
-"Jmax" = 20, "clam_smooth" = 0.8, "cprop_beta" = 0.3, "phi" = 3, "pi_b" = 0.5)}
+"c_tau", "d_tau","type", "p_0", "a_sigma", "b_sigma"). Default is list("a_tau" = 1,
+"b_tau" = 1,"c_tau" = 1, "d_tau" = 0.001, "type" = "mix", "p_0" = 0.5, 
+"a_sigma" = 2, "b_sigma" = 2, "phi" = 3)}
 
 \item{lambda_hyperparameters}{contains two hyperparameters (a_lambda and b_lambda) used 
 for the update of lambda and lambda_0}
@@ -97,7 +92,7 @@ hyper <-  list("a_tau" = 1,
                "b_tau" = 0.001,
                "c_tau" = 1,
                "d_tau" = 1, 
-               "type" = "all",
+               "type" = 'all',
                "p_0" = 0.5, 
                "a_sigma" = 2,
                "b_sigma" = 2,
@@ -109,9 +104,7 @@ tuning_parameters <- list("Jmax" = 5,
                           "cprop_beta" = 0.5,
                           "alpha" = 0.4)
                           
-# Set initial values to 'NULL' for default settings
 output <- GibbsMH(Y, I, X, Y_0, I_0, X_0,
-                  tuning_parameters, initial_values = NULL, hyper, 
+                  tuning_parameters, hyper, 
                   iter = 5, warmup_iter = 1)
-                  
 }

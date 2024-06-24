@@ -7,12 +7,13 @@
 \method{BayesFBHborrow}{NoBorrow}(
   data,
   data_hist = NULL,
-  tuning_parameters,
-  initial_values = NULL,
-  hyperparameters = list(a_sigma = 1, b_sigma = 1, phi = 3, clam_smooth = 0.8),
+  borrow = FALSE,
+  model_choice = "no_borrow",
+  tuning_parameters = NULL,
+  hyperparameters = NULL,
   lambda_hyperparameters = list(a_lambda = 0.01, b_lambda = 0.01),
-  iter = 150,
-  warmup_iter = 10,
+  iter = 2000,
+  warmup_iter = 2000,
   refresh = 0,
   verbose = FALSE,
   max_grid = 2000
@@ -25,18 +26,19 @@ indicator of the covariate)}
 
 \item{data_hist}{NULL (not used)}
 
-\item{tuning_parameters}{list of "cprop_beta", "Jmax", and "pi_b"}
+\item{borrow}{FALSE (default), will run the model with borrowing}
 
-\item{initial_values}{list containing the initial values of c("J", "s_r",
-"mu", "sigma2", "lambda", beta") (optional)}
+\item{model_choice}{'no_borrow' (default), for no borrowing}
 
-\item{hyperparameters}{list containing the hyperparameters c("a_sigma",
-"b_sigma", "Jmax", "clam_smooth", "cprop_beta", "phi"). Default is 
-list("a_sigma" = 2, "b_sigma" = 2, "Jmax" = 20, "clam_smooth" = 0.8, 
-"cprop_beta" = 0.3, "phi" = 3)}
+\item{tuning_parameters}{list of "cprop_beta", "Jmax", and "pi_b". Default is 
+("Jmax" = 5, "cprop_beta" = 0.5, "pi_b" = 0.5)}
 
-\item{lambda_hyperparameters}{contains two hyperparameters ("a" and "b") used for
-the update of lambda, default is c(0.01, 0.01)}
+\item{hyperparameters}{list containing the hyperparameters c("a_sigma", "b_sigma", 
+"phi", clam_smooth"). Default is list("a_sigma" = 2, "b_sigma" = 2, "phi" = 3 ,
+"clam_smooth" = 0.8)}
+
+\item{lambda_hyperparameters}{contains two hyperparameters ("a_lambda" and "b_lambda")
+used for the update of lambda, default is c(0.01, 0.01)}
 
 \item{iter}{number of iterations for MCMC sampler. Default is 2000}
 
@@ -46,14 +48,17 @@ Default is 2000}
 \item{refresh}{number of iterations between printed console updates. Default
 is 0}
 
-\item{verbose}{TRUE (default), choice of output, if TRUE will output 
+\item{verbose}{FALSE (default), choice of output, if TRUE will output 
 intermittent results into console}
 
 \item{max_grid}{grid size for the smoothed baseline hazard. Default is 2000}
 }
 \value{
-list of samples for both fixed (can be found in $out_fixed) and 
-multidimensional parameters (lambda, s, tau)
+a nested list of two items, 'out' and 'plots'. The list 'out' will
+contain all the samples of the MCMC chain, as well as acceptance ratios. The
+latter, 'plots', contains plots (and data) of the smoothed baseline hazard, 
+smoothed survival, a histogram of the sampled number of split points, and the
+trace plot of the treatment effect beta_1
 }
 \description{
 Main function of the BayesFBHborrow package. This generic function 
@@ -61,20 +66,15 @@ calls the correct MCMC sampler for time-to-event without Bayesian borrowing.
 }
 \examples{
 set.seed(123)
-# Load the example data and write your initial values and hyper parameters
+# Load the example data
 data(piecewise_exp_cc, package = "BayesFBHborrow")
 
-# Set your hyperparameters and tuning parameters
-hyper <-  list("a_sigma" = 2,
-               "b_sigma" = 2,
-               "clam_smooth" = 0.5,
-               "phi" = 3)
-
+# Set your tuning parameters
 tuning_parameters <- list("Jmax" = 5,
-                          "pi_b" = 0.5,
-                          "cprop_beta" = 0.5)
+                          "cprop_beta" = 3.25)
                           
 # Set initial values to default
-out <- BayesFBHborrow(piecewise_exp_cc, NULL, tuning_parameters,
-                      initial_values = NULL, hyper, iter = 5, warmup_iter = 1)
+out <- BayesFBHborrow(piecewise_exp_cc, NULL, borrow = FALSE, 
+                      tuning_parameters = tuning_parameters,
+                      iter = 2, warmup_iter = 0)
 }

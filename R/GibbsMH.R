@@ -13,15 +13,12 @@
 #' @param Y_0 historical data, default is NULL
 #' @param I_0 historical event indicator, default is NULL
 #' @param X_0 historical design matrix, default is NULL
-#' @param tuning_parameters list of "cprop_beta", "cprop_beta_0", "alpha", "Jmax",
-#' and "pi_b"
-#' @param initial_values list containing the initial values of c("J", "s_r",
-#' "mu", "sigma2", "tau", "lambda_0", "lambda", "beta_0", "beta") (optional)
+#' @param tuning_parameters list of "cprop_beta" ("cprop_beta_0" for historical data), "alpha", "Jmax",
+#' and "pi_b".
 #' @param hyperparameters list containing the hyperparameters c("a_tau", "b_tau",
-#'  "c_tau", "d_tau","type", "p_0", "a_sigma", "b_sigma", "Jmax", "clam_smooth",
-#'  "cprop_beta", "phi", "pi_b"). Default is list("a_tau" = 1,"b_tau" = 1,"c_tau" = 1,
-#' "d_tau" = 0.001, "type" = "mix", "p_0" = 0.5, "a_sigma" = 2, "b_sigma" = 2,
-#' "Jmax" = 20, "clam_smooth" = 0.8, "cprop_beta" = 0.3, "phi" = 3, "pi_b" = 0.5)
+#'  "c_tau", "d_tau","type", "p_0", "a_sigma", "b_sigma"). Default is list("a_tau" = 1,
+#'  "b_tau" = 1,"c_tau" = 1, "d_tau" = 0.001, "type" = "mix", "p_0" = 0.5, 
+#'  "a_sigma" = 2, "b_sigma" = 2, "phi" = 3)
 #' @param lambda_hyperparameters contains two hyperparameters (a_lambda and b_lambda) used 
 #' for the update of lambda and lambda_0
 #' @param iter number of iterations for MCMC sampler, excluding warmup, 
@@ -61,7 +58,7 @@
 #'                "b_tau" = 0.001,
 #'                "c_tau" = 1,
 #'                "d_tau" = 1, 
-#'                "type" = "all",
+#'                "type" = 'all',
 #'                "p_0" = 0.5, 
 #'                "a_sigma" = 2,
 #'                "b_sigma" = 2,
@@ -73,15 +70,12 @@
 #'                           "cprop_beta" = 0.5,
 #'                           "alpha" = 0.4)
 #'                           
-#' # Set initial values to 'NULL' for default settings
 #' output <- GibbsMH(Y, I, X, Y_0, I_0, X_0,
-#'                   tuning_parameters, initial_values = NULL, hyper, 
+#'                   tuning_parameters, hyper, 
 #'                   iter = 5, warmup_iter = 1)
-#'                   
-GibbsMH <- function(Y, I, X, Y_0 = NULL, I_0 = NULL, X_0 = NULL, tuning_parameters,
-                    initial_values, hyperparameters,
-                    lambda_hyperparameters, iter, warmup_iter, refresh,
-                    max_grid) {
+GibbsMH <- function(Y, I, X, Y_0 = NULL, I_0 = NULL, X_0 = NULL,
+                    tuning_parameters, hyperparameters, lambda_hyperparameters,
+                    iter, warmup_iter, refresh, max_grid) {
   checkmate::assert_numeric(Y)
   Y_0 <- Y_0
   if (is.null(Y_0)) {
@@ -107,15 +101,12 @@ GibbsMH <- function(Y, I, X, Y_0 = NULL, I_0 = NULL, X_0 = NULL, tuning_paramete
 #' @param Y_0 historical data
 #' @param I_0 historical event indicator
 #' @param X_0 historical design matrix
-#' @param tuning_parameters list of "cprop_beta", "cprop_beta_0", "alpha", "Jmax",
-#' and "pi_b"
-#' @param initial_values list containing the initial values of c("J", "s_r",
-#' "mu", "sigma2", "tau", "lambda_0", "lambda", "beta_0", "beta") (optional)
+#' @param tuning_parameters list of "cprop_beta" ("cprop_beta_0" for historical data), "alpha", "Jmax",
+#' and "pi_b".
 #' @param hyperparameters list containing the hyperparameters c("a_tau", "b_tau",
-#'  "c_tau", "d_tau","type", "p_0", "a_sigma", "b_sigma", "Jmax", "clam_smooth",
-#'  "cprop_beta", "phi", "pi_b"). Default is list("a_tau" = 1,"b_tau" = 1,"c_tau" = 1,
-#' "d_tau" = 0.001, "type" = "mix", "p_0" = 0.5, "a_sigma" = 2, "b_sigma" = 2,
-#' "Jmax" = 20, "clam_smooth" = 0.8, "cprop_beta" = 0.3, "phi" = 3, "pi_b" = 0.5)
+#'  "c_tau", "d_tau","type", "p_0", "a_sigma", "b_sigma"). Default is list("a_tau" = 1,
+#'  "b_tau" = 1,"c_tau" = 1, "d_tau" = 0.001, "type" = "mix", "p_0" = 0.5, 
+#'  "a_sigma" = 2, "b_sigma" = 2, "phi" = 3)
 #' @param lambda_hyperparameters contains two hyperparameters (a_lambda and b_lambda)
 #' used for the update of lambda and lambda_0. Default is c(0.01, 0.01)
 #' @param iter number of iterations for MCMC sampler, excluding warmup, 
@@ -166,15 +157,12 @@ GibbsMH <- function(Y, I, X, Y_0 = NULL, I_0 = NULL, X_0 = NULL, tuning_paramete
 #'                           "pi_b" = 0.5,
 #'                           "cprop_beta" = 0.5,
 #'                           "alpha" = 0.4)
-#'                           
-#' # Set initial values to 'NULL' for default settings
-#' output <- GibbsMH(Y, I, X, Y_0, I_0, X_0,
-#'                   tuning_parameters, initial_values = NULL, hyper, 
-#'                   iter = 5, warmup_iter = 1)
+#'           
+#' output <- GibbsMH(Y, I, X, Y_0, I_0, X_0, tuning_parameters = tuning_parameters,
+#'                   hyperparameters = hyper, iter = 5, warmup_iter = 1)
 GibbsMH.WBorrow <- function(Y, I, X, 
                             Y_0, I_0, X_0,
-                            tuning_parameters,
-                            initial_values = NULL,
+                            tuning_parameters = NULL,
                             hyperparameters = list(
                               "a_tau" = 1,
                               "b_tau" = 0.001,
@@ -213,88 +201,89 @@ GibbsMH.WBorrow <- function(Y, I, X,
   clam <- hyperparameters$clam_smooth
   phi <- hyperparameters$phi
   
-  if (is.null(initial_values)) {
-    J <- phi
-    sigma2 <- b_sigma / (a_sigma + 1)
-    quantiles <- quantile(Y, probs = seq(0, 1, length.out = J + 2),
-                          na.rm = TRUE, names = FALSE)
-    s <- c(0, quantiles[1:J + 1], max(Y, Y_0))
-    
-    group_data_cc <- group_summary(Y[X[,1] == 0], I[X[,1] == 0], NULL, s)
-    group_data_hist <- group_summary(Y_0, I_0, NULL, s)
-    
-    lambda_init <- init_lambda_hyperparameters(group_data_cc, s)
-    lambda_init_hist <- init_lambda_hyperparameters(group_data_hist, s)
-    
-    lambda <- mapply(stats::rgamma, n = 1,
-                     shape = lambda_init$shape,
-                     rate = lambda_init$rate)
-    
-    lambda_0 <- mapply(stats::rgamma, n = 1,
-                       shape = lambda_init_hist$shape,
-                       rate = lambda_init_hist$rate)
-    
-    ### mu and sigma2
-    # add the time exposed, etc.
-    lambda_init_sum_hist <- init_lambda_hyperparameters(lapply(group_data_hist, sum), s[c(1, J + 2)])
-    mu <- mean(log(mapply(stats::rgamma, n = 500,
-                      shape = lambda_init_sum_hist$shape,
-                      rate = lambda_init_sum_hist$rate)))
-    
-    sigma2 <- var(log(mapply(stats::rgamma, n = 500,
-                          shape = lambda_init_sum_hist$shape,
-                          rate = lambda_init_sum_hist$rate)))
-    
-    #Data and beta initial values
-    bp <- ncol(X)
-    df_curr <- .dataframe_fun(Y = Y, I = I, X = X, s = s, lambda = lambda, bp = ncol(X), J = J)
-    
-    if(is.null(X_0)){
-      bp_0 <- 0
-      beta_0 <- NULL
-    } else {
-      bp_0 <- ncol(X_0)
-      df_hist <- .dataframe_fun(Y = Y_0, I = I_0, X = X_0, s = s, lambda = lambda_0, bp = bp_0, J = J)
-      glm.mom_0 <- .glmFit(df_hist)
-      beta_0 <- glm.mom_0$beta.mu
-      beta_0_count <- numeric(bp_0)
-    }  
-    
-    glm.mom <- .glmFit(df_curr)
-    beta <- glm.mom$beta.mu
-    bp <- ncol(X)
-    beta_count <- numeric(bp)
-    
-    if(is.null(X_0)){
-      df_hist <- .dataframe_fun(Y = Y_0, I = I_0, X = X_0, s = s, lambda = lambda_0, bp = bp_0, J = J)
-    }
-    
-    
+  
+  # Set initial values
+  J <- phi
+  sigma2 <- b_sigma / (a_sigma + 1)
+  quantiles <- quantile(Y, probs = seq(0, 1, length.out = J + 2),
+                        na.rm = TRUE, names = FALSE)
+  s <- c(0, quantiles[1:J + 1], max(Y, Y_0))
+  
+  group_data_cc <- group_summary(Y[X[,1] == 0], I[X[,1] == 0], NULL, s)
+  group_data_hist <- group_summary(Y_0, I_0, NULL, s)
+  
+  lambda_init <- init_lambda_hyperparameters(group_data_cc, s)
+  lambda_init_hist <- init_lambda_hyperparameters(group_data_hist, s)
+  
+  lambda <- mapply(stats::rgamma, n = 1,
+                   shape = lambda_init$shape,
+                   rate = lambda_init$rate)
+  
+  lambda_0 <- mapply(stats::rgamma, n = 1,
+                     shape = lambda_init_hist$shape,
+                     rate = lambda_init_hist$rate)
+  
+  ### mu and sigma2
+  # add the time exposed, etc.
+  lambda_init_sum_hist <- init_lambda_hyperparameters(lapply(group_data_hist, sum), s[c(1, J + 2)])
+  mu <- mean(log(mapply(stats::rgamma, n = 500,
+                    shape = lambda_init_sum_hist$shape,
+                    rate = lambda_init_sum_hist$rate)))
+  
+  sigma2 <- var(log(mapply(stats::rgamma, n = 500,
+                        shape = lambda_init_sum_hist$shape,
+                        rate = lambda_init_sum_hist$rate)))
+  
+  #Data and beta initial values
+  bp <- ncol(X)
+  df_curr <- .dataframe_fun(Y = Y, I = I, X = X, s = s, lambda = lambda, bp = ncol(X), J = J)
+  
+  if(is.null(X_0)){
+    bp_0 <- 0
+    beta_0 <- NULL
   } else {
-    J <- initial_values$J
-    mu <- initial_values$mu
-    sigma2 <- initial_values$sigma2
-    s <- c(0, sort(initial_values$s_r), max(Y, Y_0))
-    lambda <- initial_values$lambda
-    lambda_0 <- initial_values$lambda_0
-    beta <- initial_values$beta
-    bp <- length(beta)
-    beta_count <- numeric(bp)
-    
-    if(!is.null(X_0)) {
-      beta_0 <- initial_values$beta_0
-      bp_0 <- length(beta_0)
-      beta_0_count <- rep(0, bp_0)
-    } else {
-      bp_0 <- 0
-      beta_0 <- NULL
-    }
-    
-    #Map lambda and introduce indicators. 
+    bp_0 <- ncol(X_0)
     df_hist <- .dataframe_fun(Y = Y_0, I = I_0, X = X_0, s = s, lambda = lambda_0, bp = bp_0, J = J)
-    df_curr <- .dataframe_fun(Y = Y, I = I, X = X, s = s, lambda = lambda, bp = bp, J = J)
-    
+    glm.mom_0 <- .glmFit(df_hist)
+    beta_0 <- glm.mom_0$beta.mu
+    beta_0_count <- numeric(bp_0)
+  }  
+  
+  glm.mom <- .glmFit(df_curr)
+  beta <- glm.mom$beta.mu
+  bp <- ncol(X)
+  beta_count <- numeric(bp)
+  
+  if(is.null(X_0)){
+    df_hist <- .dataframe_fun(Y = Y_0, I = I_0, X = X_0, s = s, lambda = lambda_0, bp = bp_0, J = J)
   }
+  
+  
+  #} else {
+  #  J <- initial_values$J
+  #  mu <- initial_values$mu
+  #  sigma2 <- initial_values$sigma2
+  #  s <- c(0, sort(initial_values$s_r), max(Y, Y_0))
+  #  lambda <- initial_values$lambda
+  #  lambda_0 <- initial_values$lambda_0
+  #  beta <- initial_values$beta
+  #  bp <- length(beta)
+  #  beta_count <- numeric(bp)
+  #  
+  ##  if(!is.null(X_0)) {
+  #    beta_0 <- initial_values$beta_0
+  #    bp_0 <- length(beta_0)
+  #    beta_0_count <- rep(0, bp_0)
+  #  } else {
+  #    bp_0 <- 0
+  #    beta_0 <- NULL
+  #  }
+  #  
+  #  #Map lambda and introduce indicators. 
+  #  df_hist <- .dataframe_fun(Y = Y_0, I = I_0, X = X_0, s = s, lambda = lambda_0, bp = bp_0, J = J)
+  #  df_curr <- .dataframe_fun(Y = Y, I = I, X = X, s = s, lambda = lambda, bp = bp, J = J)
+  #  
+  #}
   
   a_tau <- hyperparameters$a_tau
   b_tau <- hyperparameters$b_tau
@@ -356,6 +345,8 @@ GibbsMH.WBorrow <- function(Y, I, X,
   out_slam <-  data.frame(matrix(data = NA, nrow = 0, ncol =  max_grid))
   colnames(out_slam) <- time_grid
   
+  #tm1 <- c(0,time_grid)[-(length(time_grid)+1)]
+  #grid_width <- time_grid-tm1
   
   ### MCMC START ###
   sample <- c(rep("(Warmup)", warmup_iter), rep("(Sampling)", iter))
@@ -480,7 +471,8 @@ GibbsMH.WBorrow <- function(Y, I, X,
                      "lambda_0_move" = lambda_0_move, 
                      "lambda_move" = lambda_move,
                      "beta_move" = beta_count,
-                     "out_slam" = out_slam)
+                     "out_slam" = out_slam,
+                     "time_grid" =  time_grid)
     class(out_list) <- c("BayesFBHborrow", "list")
   } else {
     out_fixed <- cbind(out_fixed, out_tau)
@@ -490,7 +482,8 @@ GibbsMH.WBorrow <- function(Y, I, X,
                      "lambda_0_move" = lambda_0_move, 
                      "lambda_move" = lambda_move,
                      "beta_move" = beta_count,
-                     "out_slam" = out_slam)
+                     "out_slam" = out_slam,
+                     "time_grid" =  time_grid)
     class(out_list) <- c("BayesFBHborrow", "list")
   }
   
@@ -520,13 +513,9 @@ GibbsMH.WBorrow <- function(Y, I, X,
 #' @param X_0 historical design matrix, default is NULL
 #' @param tuning_parameters list of "cprop_beta", "Jmax",
 #' and "pi_b"
-#' @param initial_values list containing the initial values of c("J", "s_r",
-#' "mu", "sigma2", "lambda", beta") (optional)
 #' @param hyperparameters list containing the hyperparameters c("a_sigma",
-#' "b_sigma", "Jmax", "clam_smooth", "cprop_beta", "phi"). Default is 
-#' list("a_sigma" = 2, "b_sigma" = 2, "Jmax" = 20, "clam_smooth" = 0.8, 
-#' "cprop_beta" = 0.3, "phi" = 3)
-#' @param lambda_hyperparameters contains two hyperparameters ("a" and "b") used for
+#' "b_sigma", "clam_smooth", "phi").
+#' @param lambda_hyperparameters contains two hyperparameters (a_lambda and b_lambda) used for
 #' the update of lambda, default is c(0.01, 0.01)
 #' @param iter number of iterations for MCMC sampler, excluding warmup, 
 #' default is 2000
@@ -545,7 +534,7 @@ GibbsMH.WBorrow <- function(Y, I, X,
 #'
 #' @examples
 #' set.seed(123)
-#' # Load example data and set your initial values and hyper parameters
+#' # Load example data and set your hyper parameters
 #' data(weibull_cc, package = "BayesFBHborrow")
 #' data(weibull_hist, package = "BayesFBHborrow")
 #' 
@@ -567,13 +556,10 @@ GibbsMH.WBorrow <- function(Y, I, X,
 #'                           
 #' # Set initial values to 'NULL' for default settings
 #' output <- GibbsMH(Y, I, X, NULL, NULL, NULL,
-#'                   tuning_parameters, initial_values = NULL, hyper, 
+#'                   tuning_parameters = tuning_parameters, hyperparameters = hyper, 
 #'                   iter = 5, warmup_iter = 1)
-
-                  
 GibbsMH.NoBorrow <- function(Y, I, X = NULL, Y_0 = NULL, I_0 = NULL, X_0 = NULL,
                              tuning_parameters,
-                             initial_values = NULL,
                              hyperparameters = list(
                                "a_sigma" = 1,
                                "b_sigma" = 1,
@@ -611,69 +597,68 @@ GibbsMH.NoBorrow <- function(Y, I, X = NULL, Y_0 = NULL, I_0 = NULL, X_0 = NULL,
   phi <- hyperparameters$phi
   
   
-  if (is.null(initial_values)) {
-    J <- phi
-    sigma2 <- b_sigma / (a_sigma + 1)
-    quantiles <- quantile(Y, probs = seq(0, 1, length.out = J + 2),
-                          na.rm = TRUE, names = FALSE)
-    s <- c(0, quantiles[1:J + 1], max(Y))
-   
-    group_data <- group_summary(Y, I, NULL, s)
-    
-    lambda_init <- init_lambda_hyperparameters(group_data, s)
-    lambda <- mapply(stats::rgamma, n = 1,
-                     shape = lambda_init$shape,
-                     rate = lambda_init$rate)
-    
-    lambda_init_sum <- init_lambda_hyperparameters(lapply(group_data, sum), s[c(1, J + 2)])
-    
-    log_hazard_sample <- log(mapply(stats::rgamma, n = 500,
-                                    shape = lambda_init_sum$shape,
-                                    rate = lambda_init_sum$rate))
-    mu <- mean(log_hazard_sample)
-    sigma2 <- var(log_hazard_sample)
-    
-    if(is.null(X)) {
-      beta <- NULL
-      bp <- 0
-    } else {
-      bp <- ncol(X)
-      df_all <- .dataframe_fun(Y = Y, I = I, X = X, s = s, lambda = lambda, bp =  ncol(X), J = J)
-      glm.mom <- .glmFit(df_all)
-      beta <- glm.mom$beta.mu
-      beta_count <- numeric(bp)
-    }
-    
-    if (bp == 0) {
-      df_all <- .dataframe_fun(Y = Y, I = I, X = NULL, s = s, lambda = lambda, bp =  0, J = J)
-    }
-    
-    
-    
-  } else {
-    
-    J <- initial_values$J
-    mu <- initial_values$mu
-    sigma2 <- initial_values$sigma2
-    s <- c(0, sort(initial_values$s_r), max(Y, Y_0))
-    lambda <- initial_values$lambda
-    
-    if (!is.null(X)) {
-      beta <- initial_values$beta
-      bp <- length(beta)
-      beta_count <- numeric(bp)
-    } else {
-      beta <- NULL
-      bp <- 0
-    }
-    
-    if (bp > 0) {
-      df_all <- .dataframe_fun(Y = Y, I = I, X = X, s = s, lambda = lambda, bp = bp, J = J)
-    }else{
-      df_all <- .dataframe_fun(Y = Y, I = I, X = NULL, s = s, lambda = lambda, bp =  0, J = J)
-    }
+  J <- phi
+  sigma2 <- b_sigma / (a_sigma + 1)
+  quantiles <- quantile(Y, probs = seq(0, 1, length.out = J + 2),
+                        na.rm = TRUE, names = FALSE)
+  s <- c(0, quantiles[1:J + 1], max(Y))
+ 
+  group_data <- group_summary(Y, I, NULL, s)
   
+  lambda_init <- init_lambda_hyperparameters(group_data, s)
+  lambda <- mapply(stats::rgamma, n = 1,
+                   shape = lambda_init$shape,
+                   rate = lambda_init$rate)
+  
+  lambda_init_sum <- init_lambda_hyperparameters(lapply(group_data, sum), s[c(1, J + 2)])
+  
+  log_hazard_sample <- log(mapply(stats::rgamma, n = 500,
+                                  shape = lambda_init_sum$shape,
+                                  rate = lambda_init_sum$rate))
+  mu <- mean(log_hazard_sample)
+  sigma2 <- var(log_hazard_sample)
+  
+  if(is.null(X)) {
+    beta <- NULL
+    bp <- 0
+  } else {
+    bp <- ncol(X)
+    df_all <- .dataframe_fun(Y = Y, I = I, X = X, s = s, lambda = lambda, bp =  ncol(X), J = J)
+    glm.mom <- .glmFit(df_all)
+    beta <- glm.mom$beta.mu
+    beta_count <- numeric(bp)
   }
+  
+  if (bp == 0) {
+    df_all <- .dataframe_fun(Y = Y, I = I, X = NULL, s = s, lambda = lambda, bp =  0, J = J)
+  }
+  
+  
+  
+#  } else {
+##    
+#    J <- initial_values$J
+#    mu <- initial_values$mu
+#    sigma2 <- initial_values$sigma2
+#    s <- c(0, sort(initial_values$s_r), max(Y, Y_0))
+#    lambda <- initial_values$lambda
+#    
+#    if (!is.null(X)) {
+#      beta <- initial_values$beta
+#      bp <- length(beta)
+#      beta_count <- numeric(bp)
+#    } else {
+ #     beta <- NULL
+#      bp <- 0
+#    }
+#    
+#    if (bp > 0) {
+#      df_all <- .dataframe_fun(Y = Y, I = I, X = X, s = s, lambda = lambda, bp = bp, J = J)
+#    }else{
+#      df_all <- .dataframe_fun(Y = Y, I = I, X = NULL, s = s, lambda = lambda, bp =  0, J = J)
+#    }
+#  
+#  }
   
   # Tuning parameters
   Jmax <- tuning_parameters$Jmax
@@ -692,10 +677,12 @@ GibbsMH.NoBorrow <- function(Y, I, X = NULL, Y_0 = NULL, I_0 = NULL, X_0 = NULL,
   out_s <- data.frame(matrix(NA, nrow = iter + warmup_iter, ncol = Jmax + 2))
   
   #Max number of grid points
-  t <- seq(1e-8, max(Y), length.out = max_grid)
+  time_grid <- seq(1e-8, max(Y), length.out = max_grid)
   out_slam <-  data.frame(matrix(data = NA, nrow = 0, ncol = max_grid))
-  colnames(out_slam) <- t
+  colnames(out_slam) <- time_grid
   
+  #tm1 <- c(0,time_grid)[-(length(time_grid)+1)]
+  #grid_width <- time_grid-tm1
   
   ### MCMC START ###
   sample <- c(rep("(Warmup)", warmup_iter), rep("(Sampling)", iter))
@@ -767,7 +754,7 @@ GibbsMH.NoBorrow <- function(Y, I, X = NULL, Y_0 = NULL, I_0 = NULL, X_0 = NULL,
     out_s[i, 1:(length(s))] <- s
     
     #Grid of baseline hazards for shrunk estimate
-    indx <- findInterval(t, s, left.open = T)
+    indx <- findInterval(time_grid, s, left.open = T)
     out_slam[i, ] <- lambda[indx]
   }
   
@@ -779,7 +766,7 @@ GibbsMH.NoBorrow <- function(Y, I, X = NULL, Y_0 = NULL, I_0 = NULL, X_0 = NULL,
   
   out_list <- list("out_fixed" = out_fixed, "lambda" = out_lambda, "s" = out_s,
                    "out_slam" = out_slam,  "lambda_count" = lambda_count,
-                   "lambda_move" = lambda_move)
+                   "lambda_move" = lambda_move, "time_grid" = time_grid)
   class(out_list) <- c("BayesFBHborrow", "list")
   
   if (!is.null(beta)) {

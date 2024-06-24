@@ -7,8 +7,9 @@
 BayesFBHborrow(
   data,
   data_hist = NULL,
+  borrow = TRUE,
+  model_choice,
   tuning_parameters,
-  initial_values,
   hyperparameters,
   lambda_hyperparameters,
   iter,
@@ -23,27 +24,28 @@ BayesFBHborrow(
 and "event" (censoring), and covariates "X_i" (where i should be a number/
 indicator of the covariate)}
 
-\item{data_hist}{data.frame containing atleast three vectors of "tte" 
+\item{data_hist}{data.frame containing atleast two vectors of "tte" 
  (time-to-event) and "event" (censoring), with the option of adding covariates
  named "X_0_i" (where i should be a number/
 indicator of the covariate), for historical
  data}
 
-\item{tuning_parameters}{list of "cprop_beta", "cprop_beta_0", "alpha", "Jmax",
-and "pi_b"}
+\item{borrow}{TRUE (default), will run the model with borrowing}
 
-\item{initial_values}{list containing the initial values of c("J", "s_r",
-"mu", "sigma2", "tau", "lambda_0", "lambda", "beta_0", "beta") (optional)}
+\item{model_choice}{choice of which borrowing model to use out of 'mix', 'uni'
+or 'all'}
+
+\item{tuning_parameters}{list of "cprop_beta" ("cprop_beta_0" for historical data), "alpha", "Jmax",
+and "pi_b". Default is ("Jmax" = 5, "clam_smooth" = 0.8, "cprop_beta" = 0.5, 
+"cprop_beta_0"  = 0.5, "pi_b" = 0.5)}
 
 \item{hyperparameters}{list containing the hyperparameters c("a_tau", "b_tau",
- "c_tau", "d_tau","type", "p_0", "a_sigma", "b_sigma", "Jmax", "clam_smooth",
- "cprop_beta", "phi", "pi_b"). Default is list("a_tau" = 1,"b_tau" = 1,"c_tau" = 1,
-"d_tau" = 0.001, "type" = "mix", "p_0" = 0.5, "a_sigma" = 2, "b_sigma" = 2,
-"Jmax" = 20, "clam_smooth" = 0.8, "cprop_beta" = 0.3, "phi" = 3, "pi_b" = 0.5)}
+"c_tau", "d_tau","type", "p_0", "a_sigma", "b_sigma"). Default is list("a_tau" = 1,
+"b_tau" = 1,"c_tau" = 1, "d_tau" = 0.001, "type" = "mix", "p_0" = 0.5, 
+"a_sigma" = 2, "b_sigma" = 2, "phi" = 3)}
 
-\item{lambda_hyperparameters}{contains two (three) hyperparameters (a, b (,alpha))
-used for the update of lambda and lambda_0. alpha is the power parameter when 
-sampling for lambda (effects how much is borrowed)}
+\item{lambda_hyperparameters}{contains two hyperparameters (a_lambda and b_lambda)
+used for the update of lambda and lambda_0. Default is c(0.01, 0.01)}
 
 \item{iter}{number of iterations for MCMC sampler}
 
@@ -51,14 +53,17 @@ sampling for lambda (effects how much is borrowed)}
 
 \item{refresh}{number of iterations between printed screen updates}
 
-\item{verbose}{TRUE (default), choice of output, if TRUE will output 
+\item{verbose}{FALSE (default), choice of output, if TRUE will output 
 intermittent results into console}
 
 \item{max_grid}{grids size for the smoothed baseline hazard}
 }
 \value{
-list of samples for both fixed (can be found in $out_fixed) and 
-multidimensional parameters (lambda, lambda_0, s, tau)
+a nested list of two items, 'out' and 'plots'. The list 'out' will
+contain all the samples of the MCMC chain, as well as acceptance ratios. The
+latter, 'plots', contains plots (and data) of the smoothed baseline hazard, 
+smoothed survival, a histogram of the sampled number of split points, and the
+trace plot of the treatment effect beta_1
 }
 \description{
 Main function of the BayesFBHborrow package. This generic function 
@@ -66,38 +71,24 @@ calls the correct MCMC sampler for time-to-event Bayesian borrowing.
 }
 \examples{
 set.seed(123)
-# Load the example data and write your initial values and hyper parameters
+# Load the example data
 data(piecewise_exp_cc, package = "BayesFBHborrow")
 data(piecewise_exp_hist, package = "BayesFBHborrow")
 
-# Set your hyperparameters and tuning parameters
-hyper <-  list("a_tau" = 1, 
-               "b_tau" = 0.001,
-               "c_tau" = 1,
-               "d_tau" = 1, 
-               "type" = "all",
-               "p_0" = 0.5, 
-               "a_sigma" = 2,
-               "b_sigma" = 2,
-               "clam_smooth" = 0.5,
-               "phi" = 3)
-
+# Set your tuning parameters
 tuning_parameters <- list("Jmax" = 5,
                           "pi_b" = 0.5,
-                          "cprop_beta" = 0.5,
+                          "cprop_beta" = 3.25,
                           "alpha" = 0.4)
                           
-# Set initial values to default
-out <- BayesFBHborrow(piecewise_exp_cc, piecewise_exp_hist, tuning_parameters,
-                      initial_values = NULL, hyper, iter = 5, warmup_iter = 1)
+# Set hyperparameters to default, with the borrowing model "mix"
+out <- BayesFBHborrow(data = piecewise_exp_cc, data_hist = piecewise_exp_hist,
+                      model_choice = 'mix', tuning_parameters = tuning_parameters,
+                      iter = 2, warmup_iter = 0)
 
 # Create a summary of the output
-# summary(out, estimator = "out_fixed")
+summary(out$out, estimator = "out_fixed")
 
-# Plot some of the estimates
-# Do beta (trace), s (hist) and lambda (matrix)
-trace <- plot(out, 1:5, estimator = "beta_1", type = "trace")
-hist <- plot(out, estimator = "J", type = "hist")
-smoothed_baseline_hazard <- plot(out, 1:2000, estimator = "out_slam", 
-                                 type = "matrix")
+# Plot the predictive curves for the treatment group
+plots <- plot(out$out, out$out$time_grid, x_pred = c(1))
 }

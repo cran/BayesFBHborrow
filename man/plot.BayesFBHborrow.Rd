@@ -4,29 +4,25 @@
 \alias{plot.BayesFBHborrow}
 \title{Plot the MCMC results}
 \usage{
-\method{plot}{BayesFBHborrow}(x, x_lim, estimator = NULL, type = NULL, ...)
+\method{plot}{BayesFBHborrow}(x, x_lim, x_pred = NULL, ...)
 }
 \arguments{
 \item{x}{object of class "BayesFBHborrow" to be visualized}
 
-\item{x_lim}{x-axis to be used for plot}
+\item{x_lim}{x-axis to be used for plot, set to NULL to use default from MCMC sampling}
 
-\item{estimator}{which estimate to be visualized}
+\item{x_pred}{vector of chosen predictors}
 
-\item{type}{The type of plot to be produced, 
-"trace" will produce a trace plot of the "fixed" parameters, 
-"hist" will give a histogram for the "fixed" parameters, 
-and "matrix" will plot the mean and quantiles of a given sample.}
-
-\item{...}{other plotting arguments, see plot_trace(), plot_hist(), plot_matrix()
+\item{...}{other plotting arguments, see .plot_matrix()
 for more information}
 }
 \value{
-ggplot2 object
+nested list of 'plots' (posterior predictive hazard, survival, 
+and hazard ratio) as well as their samples.
 }
 \description{
-S3 object which produces different plots depending on the 
-"type" variable
+S3 object which produces predictive probabilities of the survival,
+hazard, and hazard ratio for a given set of predictors
 }
 \examples{
 data(weibull_cc, package = "BayesFBHborrow")
@@ -37,24 +33,9 @@ tuning_parameters <- list("Jmax" = 5,
                           "cprop_beta" = 0.5)
                           
 # run the MCMC sampler
-out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters, 
-                      initial_values = NULL,
-                      iter = 10, warmup_iter = 1)
+out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters = tuning_parameters,
+                      iter = 3, warmup_iter = 1)
 
-# Now let's create a variety of plots
-
-# Staring with a histogram of beta_1 (treatment effect)
-gg_hist <- plot(out, NULL, estimator = "beta_1", type = "hist",
-                title = "Example histogram of beta_1")
-
-# And an accompanied trace plot of the same parameter                 
-gg_trace <- plot(out, 1:10, estimator = "beta_1", type = "trace",
-                  title = "Example trace plot", xlab = "iterations",
-                  ylab = "beta_1 (treatment effect)")
-                  
-# Lastly. visualize the smoothed baseline hazard
-time_grid <- seq(0, max(weibull_cc$tte), length.out = 2000)
-gg_matrix <- plot(out, time_grid, estimator = "out_slam", type = "matrix",
-                  title = "Example plot of smoothed baseline hazard",
-                  xlab = "time", ylab = "baseline hazard")
+# for the treatment group
+plots <- plot(out$out, out$out$time_grid, x_pred = c(1))
 }

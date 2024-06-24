@@ -1,5 +1,4 @@
-# Issues:
-
+# Issues:x
 
 set.seed(2023)
 
@@ -57,15 +56,15 @@ test_that("Gibbs_WBorrow: output parameters are correct", {
                            "phi" = 3)
   iter <- 100
 
-  expect_no_error(.input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, hyper_parameters))
+  expect_no_error(.input_check(Y, Y_0, X, X_0, tuning_parameters,  initial_values, hyper_parameters))
   
   out <- GibbsMH(Y, I, X, Y_0, I_0, X_0,
                         tuning_parameters,
-                        initial_values,
+                        
                         hyper_parameters,
                         iter = iter)
   # 9 outputs
-  expect_equal(length(out), 9)
+  expect_equal(length(out), 10)
   
   # 4 "fixed" parameters: J, mu, sigma, beta
   expect_length(out$out_fixed, 4)
@@ -100,14 +99,14 @@ test_that("Gibbs_MH_WBorrow runs for mixture borrowing", {
   expect_true(all(!is.na(GibbsMH(Y, I, X, 
                                      Y_0, I_0, X_0,
                                      tuning_parameters,
-                                     initial_values,
+                                     
                                      hyper_parameters,
                                      iter = 10)$out_fixed)))
   
   out <- GibbsMH(Y, I, X, 
                   Y_0, I_0, X_0,
                   tuning_parameters,
-                  initial_values,
+                  
                   hyper_parameters,
                   iter = 100)
   
@@ -141,14 +140,14 @@ test_that("Gibbs_MH_WBorrow runs for uni borrowing", {
   expect_true(all(!is.na(GibbsMH(Y, I, X, 
                                 Y_0, I_0, X_0,
                                  tuning_parameters,
-                                         initial_values,
+                                         
                                          hyper_parameters,
                                          iter = 10)$out_fixed)))
   
   out <- GibbsMH(Y, I, X, 
                 Y_0, I_0, X_0,
                 tuning_parameters,
-                initial_values,
+                
                 hyper_parameters,
                 iter = 100)
   
@@ -192,14 +191,14 @@ test_that("Gibbs_MH_WBorrow runs for non-piecewise borrowing", {
   expect_true(all(!is.na(GibbsMH(Y, I, X, 
                                          Y_0, I_0, X_0,
                                  tuning_parameters,
-                                         initial_values,
+                                         
                                          hyper_parameters,
                                          iter = 10)$out_fixed)))
   
   out <- GibbsMH(Y, I, X, 
                          Y_0, I_0, X_0,
                  tuning_parameters,
-                         initial_values,
+                         
                          hyper_parameters,
                          iter = 100)
   
@@ -211,12 +210,9 @@ test_that("Gibbs_MH_WBorrow runs for non-piecewise borrowing", {
 })
 
 test_that("Gibbs_MH_WBorrow runs for default parameter values", {
-  initial_values <- NULL
-  
   expect_true(all(!is.na(GibbsMH(Y, I, X, 
                                          Y_0, I_0, X_0,
-                                         tuning_parameters,
-                                         initial_values)$out_fixed)))
+                                         tuning_parameters)$out_fixed)))
   
 })
 
@@ -246,14 +242,14 @@ test_that("Gibbs_MH_WBorrow runs for zero split points", {
   expect_true(all(!is.na(GibbsMH(Y, I, X, 
                                          Y_0, I_0, X_0,
                                  tuning_parameters,
-                                         initial_values,
+                                         
                                          hyper_parameters,
                                          iter = 10)$out_fixed)))
   
   out <- GibbsMH(Y, I, X, 
                          Y_0, I_0, X_0,
                  tuning_parameters,
-                         initial_values,
+                         
                          hyper_parameters,
                          iter = 100)
   
@@ -292,14 +288,14 @@ test_that("Gibbs_MH_WBorrow runs for covariates on historical data", {
   expect_true(all(!is.na(GibbsMH(Y, I, X, 
                                          Y_0, I_0, X_0,
                                  tuning_parameters,
-                                         initial_values,
+                                         
                                          hyperparameters,
                                          iter = 10)$out_fixed)))
   
   out <- GibbsMH(Y, I, X, 
                          Y_0, I_0, X_0,
                  tuning_parameters,
-                         initial_values,
+                         
                          hyperparameters,
                          iter = 100)
 

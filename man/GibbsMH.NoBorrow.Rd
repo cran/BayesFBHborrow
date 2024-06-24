@@ -12,7 +12,6 @@
   I_0 = NULL,
   X_0 = NULL,
   tuning_parameters,
-  initial_values = NULL,
   hyperparameters = list(a_sigma = 1, b_sigma = 1, phi = 3, clam_smooth = 0.8),
   lambda_hyperparameters = list(a_lambda = 0.01, b_lambda = 0.01),
   iter = 1500L,
@@ -37,15 +36,10 @@
 \item{tuning_parameters}{list of "cprop_beta", "Jmax",
 and "pi_b"}
 
-\item{initial_values}{list containing the initial values of c("J", "s_r",
-"mu", "sigma2", "lambda", beta") (optional)}
-
 \item{hyperparameters}{list containing the hyperparameters c("a_sigma",
-"b_sigma", "Jmax", "clam_smooth", "cprop_beta", "phi"). Default is 
-list("a_sigma" = 2, "b_sigma" = 2, "Jmax" = 20, "clam_smooth" = 0.8, 
-"cprop_beta" = 0.3, "phi" = 3)}
+"b_sigma", "clam_smooth", "phi").}
 
-\item{lambda_hyperparameters}{contains two hyperparameters ("a" and "b") used for
+\item{lambda_hyperparameters}{contains two hyperparameters (a_lambda and b_lambda) used for
 the update of lambda, default is c(0.01, 0.01)}
 
 \item{iter}{number of iterations for MCMC sampler, excluding warmup, 
@@ -75,7 +69,7 @@ user is not familiar with the model at hand.
 }
 \examples{
 set.seed(123)
-# Load example data and set your initial values and hyper parameters
+# Load example data and set your hyper parameters
 data(weibull_cc, package = "BayesFBHborrow")
 data(weibull_hist, package = "BayesFBHborrow")
 
@@ -97,6 +91,6 @@ tuning_parameters <- list("Jmax" = 5,
                           
 # Set initial values to 'NULL' for default settings
 output <- GibbsMH(Y, I, X, NULL, NULL, NULL,
-                  tuning_parameters, initial_values = NULL, hyper, 
+                  tuning_parameters = tuning_parameters, hyperparameters = hyper, 
                   iter = 5, warmup_iter = 1)
 }

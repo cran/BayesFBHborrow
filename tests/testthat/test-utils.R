@@ -190,7 +190,7 @@ test_that("Input check: Hyperparameters outside [0, 1] range produce errors", {
 
 test_that("Input check: borrowing type 'uni' with given c_tau and d_tau produces a warning", {
   hyper$type <- "uni"
-  expect_message(.input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, hyper), "Borrowing is 'uni'")
+    suppressMessages( expect_message(.input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, hyper), "borrow is 'uni'"))
 })
 
 test_that("Input check: s_r values greater than maxSj produce errors", {
@@ -313,5 +313,167 @@ test_that("Input check runs for only historical/current data (NoBorrow)" ,{
   expect_no_error(.input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, hyper))
   
   s <- .input_check(Y, Y_0, X, X_0, tuning_parameters, initial_values, hyper)
-  expect_equal(s, "No borrowing")
+  expect_equal(s, "No borrow")
+})
+
+test_that("Setting tuning_parameters works" ,{
+  # With borrowing, without covariates on historical, everything given
+  X <- matrix(1, nrow = 3, ncol = 1)
+  X_0 <- NULL
+  tuning_parameters <- list("cprop_beta" = 1,
+                            "Jmax" = 10,
+                            "pi_b" = 0.5,
+                            "alpha" = 1)
+  
+  new_tuning_param <- .set_tuning_parameters(tuning_parameters = tuning_parameters, 
+                                             borrow = TRUE, X, X_0)
+  
+ expect_equal(tuning_parameters, new_tuning_param)
+ 
+ # With borrowing, withcovariates on historical, missing historical cprop
+ X <- matrix(1, nrow = 3, ncol = 1)
+ X_0 <- matrix(1, nrow = 3, ncol = 1)
+ tuning_parameters <- list("cprop_beta" = 1,
+                           "Jmax" = 10,
+                           "pi_b" = 0.5,
+                           "alpha" = 1)
+ 
+  suppressMessages(expect_message( new_tuning_param <- .set_tuning_parameters(tuning_parameters = tuning_parameters, 
+                                            borrow = TRUE, X, X_0),
+ "The following tuning_parameters were set to default: cprop_beta_0"))
+ 
+ expect_equal(new_tuning_param$cprop_beta_0, 0.5)
+ expect_equal(new_tuning_param$cprop_beta, tuning_parameters$cprop_beta)
+ 
+ 
+ # Without borrowing, without covariates on historical, everything given
+ X <- matrix(1, nrow = 3, ncol = 1)
+ X_0 <- NULL
+ tuning_parameters <- list("cprop_beta" = 1,
+                           "Jmax" = 10,
+                           "pi_b" = 0.5)
+ 
+ new_tuning_param <- .set_tuning_parameters(tuning_parameters = tuning_parameters, 
+                                            borrow = FALSE, X, X_0)
+ 
+ expect_equal(tuning_parameters, new_tuning_param)
+ 
+ # Without borrowing, without covariates on historical, none given
+ X <- matrix(1, nrow = 3, ncol = 1)
+ X_0 <- NULL
+ tuning_parameters_default <- list("Jmax" = 5,
+                           "pi_b" = 0.5,
+                           "cprop_beta" = 0.5)
+ 
+  suppressMessages(expect_message(new_tuning_param <- .set_tuning_parameters(tuning_parameters = NULL, 
+                                            borrow = FALSE, X, X_0),
+                                    "The following tuning_parameters were set to default: Jmax, pi_b, cprop_beta"))
+ 
+ expect_equal(new_tuning_param, tuning_parameters_default)
+})
+
+test_that("Setting hyperparameters works" ,{
+  # mix, everything given
+  hyperparameters_mix_default <- list(
+    "a_tau" = 1,
+    "b_tau" = 0.001,
+    "c_tau" = 1,
+    "d_tau" = 1,
+    "type" = "mix",
+    "p_0" = 0.8,
+    "a_sigma" = 1,
+    "b_sigma" = 1,
+    "phi" = 3, 
+    "clam_smooth" = 0.8)
+  
+  suppressMessages(
+  new_hyperparameters <- .set_hyperparameters(hyperparameters = hyperparameters_mix_default, model_choice = "mix"))
+  
+  expect_equal(new_hyperparameters, hyperparameters_mix_default)
+  
+  # all, everything given
+  hyperparameters <- list(
+    "a_tau" = 1,
+    "b_tau" = 0.001,
+    "c_tau" = 1,
+    "d_tau" = 1,
+    "type" = "all",
+    "p_0" = 0.8,
+    "a_sigma" = 1,
+    "b_sigma" = 1,
+    "phi" = 3, 
+    "clam_smooth" = 0.8)
+  
+  suppressMessages(
+  new_hyperparameters <- .set_hyperparameters(hyperparameters = hyperparameters, model_choice = "all"))
+  
+  expect_equal(new_hyperparameters, hyperparameters)
+  
+  
+  # uni, everything given
+  hyperparameters <- list(
+    "a_tau" = 1,
+    "b_tau" = 0.001,
+    "type" = "uni",
+    "a_sigma" = 1,
+    "b_sigma" = 1,
+    "phi" = 3, 
+    "clam_smooth" = 0.8)
+  
+  suppressMessages(
+  new_hyperparameters <- .set_hyperparameters(hyperparameters = hyperparameters, model_choice = "uni"))
+  
+  expect_equal(new_hyperparameters, hyperparameters)
+  
+  
+  # no_borrow, everything given
+  hyperparameters_default <- list(
+    "a_sigma" = 1,
+    "b_sigma" = 1,
+    "phi" = 3, 
+    "clam_smooth" = 0.8)
+  
+  suppressMessages(
+  new_hyperparameters <- .set_hyperparameters(hyperparameters = hyperparameters_default, model_choice = "no_borrow"))
+  
+  expect_equal(new_hyperparameters, hyperparameters_default)
+  # mix, bits missing
+  hyperparameters <- list(
+    "a_tau" = 1,
+    "b_tau" = 0.001,
+    "type" = "mix",
+    "p_0" = 0.8,
+    "a_sigma" = 1,
+    "b_sigma" = 1,
+    "phi" = 3)
+  
+  suppressMessages(expect_message(  new_hyperparameters <- .set_hyperparameters(hyperparameters = hyperparameters, model_choice = "mix"),
+  "The following hyperparameters were set to default: c_tau, d_tau, clam_smooth"))
+  
+  expect_equal(new_hyperparameters[order(names(new_hyperparameters))], 
+               hyperparameters_mix_default[order(names(hyperparameters_mix_default))])
+  
+  hyperparameters <- list(
+    "a_tau" = 1,
+    "b_tau" = 0.001,
+    "type" = "mix",
+    "p_0" = 0.8,
+    "a_sigma" = 10,
+    "b_sigma" = 1,
+    "phi" = 3)
+  
+  suppressMessages(
+    expect_message(new_hyperparameters <- .set_hyperparameters(hyperparameters = hyperparameters, model_choice = "mix"),
+                   "The following hyperparameters were set to default: c_tau, d_tau, clam_smooth"))
+  
+  suppressMessages(
+  expect_equal(hyperparameters$a_sigma, new_hyperparameters$a_sigma))
+  
+  # no_borow, bits missing
+  suppressMessages(
+    expect_message(new_hyperparameters <- .set_hyperparameters(hyperparameters = NULL, model_choice = "no_borrow"),
+  "The following hyperparameters were set to default: a_sigma, b_sigma, phi, clam_smooth"))
+  
+  expect_equal(new_hyperparameters[order(names(new_hyperparameters))], 
+               hyperparameters_default[order(names(hyperparameters_default))])
 })

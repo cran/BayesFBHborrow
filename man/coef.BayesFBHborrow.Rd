@@ -27,10 +27,9 @@ tuning_parameters <- list("Jmax" = 5,
                           "cprop_beta" = 0.5)
                           
 # run the MCMC sampler
-out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters, 
-                      initial_values = NULL,
-                      iter = 10, warmup_iter = 1)
+out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters = tuning_parameters,
+                      iter = 3, warmup_iter = 1)
 
 # Plot the posterior mean values of the fixed parameters
-coef(out)
+coef(out$out)
 }

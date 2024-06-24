@@ -26,12 +26,11 @@
 #'                           "cprop_beta" = 0.5)
 #'                           
 #' # run the MCMC sampler
-#' out <- BayesFBHborrow(piecewise_exp_cc, NULL, tuning_parameters, 
-#'                       initial_values = NULL,
-#'                       iter = 10, warmup_iter = 1)
+#' out <- BayesFBHborrow(piecewise_exp_cc, NULL, tuning_parameters = tuning_parameters,
+#'                       iter = 3, warmup_iter = 1)
 #' 
 #' # Create a summary of the output
-#' summary(out, estimator = "out_fixed")
+#' summary(out$out, estimator = "out_fixed")
 summary.BayesFBHborrow <- function(object, estimator = NULL, 
                              percentiles = c(0.025, 0.25, 0.75, 0.975), ...) {
   summary <- NULL
@@ -125,12 +124,11 @@ summary.BayesFBHborrow <- function(object, estimator = NULL,
 #'                           "cprop_beta" = 0.5)
 #'                           
 #' # run the MCMC sampler
-#' out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters, 
-#'                       initial_values = NULL,
-#'                       iter = 10, warmup_iter = 1)
+#' out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters = tuning_parameters,
+#'                       iter = 3, warmup_iter = 1)
 #' 
 #' # Plot the posterior mean values of the fixed parameters
-#' coef(out)
+#' coef(out$out)
 coef.BayesFBHborrow <- function(object, ...) {
   return(apply(object$out_fixed, 2, mean))
 }
@@ -151,33 +149,16 @@ coef.BayesFBHborrow <- function(object, ...) {
 #' @param fill color of the percentiles, default is blue
 #' @param linewidth thickness of the plotted line, default is 1
 #' @param alpha opacity of the percentiles, default is 0.2
+#' @param y2 (optional) second set of samples for comparison
+#' @param color2 (optional) color of the mid line, default is red
+#' @param fill2 (optional) color of the percentiles, default is red
 #' 
 #' @import ggplot2
 #'
 #' @return a ggplot2 object
-#' @export
-#'
-#' @examples
-#' data(weibull_cc, package = "BayesFBHborrow")
-#' 
-#' # Set your tuning parameters
-#' tuning_parameters <- list("Jmax" = 5,
-#'                           "pi_b" = 0.5,
-#'                           "cprop_beta" = 0.5)
-#'                           
-#' # run the MCMC sampler
-#' out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters, 
-#'                       initial_values = NULL,
-#'                       iter = 10, warmup_iter = 1)
-#' 
-#' # Visualize the smoothed baseline hazard
-#' time_grid <- seq(0, max(weibull_cc$tte), length.out = 2000)
-#' gg <- plot_matrix(time_grid, out$out_slam, 
-#'                   title = "Example plot of smoothed baseline hazard",
-#'                   xlab = "time", ylab = "baseline hazard")
-plot_matrix <- function(x_lim, y, percentiles = c(0.05, 0.95), title = "", 
+.plot_matrix <- function(x_lim, y, percentiles = c(0.05, 0.95), title = "", 
                         xlab = "", ylab = "", color = "blue", fill = "blue",
-                        linewidth = 1, alpha = 0.2) {
+                        linewidth = 1, alpha = 0.2, y2 = NULL, color2 = "red", fill2 = "red") {
   mean_values <- apply(y, 2, mean)
   ql_values <- apply(y, 2, stats::quantile, probs = percentiles[1])
   qu_values <- apply(y, 2, stats::quantile, probs = percentiles[2])
@@ -189,14 +170,42 @@ plot_matrix <- function(x_lim, y, percentiles = c(0.05, 0.95), title = "",
     ql = ql_values,
     qu = qu_values
   )
-
-  # Create the plot of survival
-  gg <- ggplot(plot_data,  aes_string(x = "time_grid")) +
-    geom_line(aes_string(y = "mean"), color = color, linewidth = linewidth) +
-    geom_ribbon(aes_string(ymin = "ql", ymax = "qu"), fill = fill, alpha = alpha) +
-    labs(x = xlab, y = ylab,
-         title = title) +
+  
+  if (is.null(y2)) {
+  gg <- ggplot(plot_data, aes(x = .data$time_grid)) +
+    geom_line(aes(y = .data$mean), color = color, linewidth = linewidth) +
+    geom_ribbon(aes(ymin = .data$ql, ymax = .data$qu), fill = fill, alpha = alpha) +
+    labs(x = xlab, y = ylab, title = title) +
     theme_minimal()
+  
+  } else {
+    plot_data$Group = "Treatment"
+    
+    mean_values <- apply(y2, 2, mean)
+    ql_values <- apply(y2, 2, stats::quantile, probs = percentiles[1])
+    qu_values <- apply(y2, 2, stats::quantile, probs = percentiles[2])
+    
+    plot_data_null <- data.frame(
+      time_grid = x_lim,
+      mean = mean_values,
+      ql = ql_values,
+      qu = qu_values,
+      Group = "Control"
+    )
+    
+    gg <- ggplot() +
+      geom_line(data = plot_data, aes(x = .data$time_grid, y = .data$mean, color = .data$Group), linewidth = linewidth) +
+      geom_ribbon(data = plot_data, aes(x = .data$time_grid, ymin = .data$ql, ymax = .data$qu, fill = .data$Group), alpha = alpha) +
+      geom_line(data = plot_data_null, aes(x = .data$time_grid, y = .data$mean, color = .data$Group), linewidth = linewidth) +
+      geom_ribbon(data = plot_data_null, aes(x = .data$time_grid, ymin = .data$ql, ymax = .data$qu, fill = .data$Group), alpha = alpha) +
+      labs(x = xlab, y = ylab, title = title) +
+      scale_color_manual(values = c("Treatment" = color, "Control" = color2)) +
+      scale_fill_manual(values = c("Treatment" = fill, "Control" = fill2)) +
+      theme_minimal()
+    
+    
+  }
+  
   
   return(gg)
 }
@@ -216,34 +225,15 @@ plot_matrix <- function(x_lim, y, percentiles = c(0.05, 0.95), title = "",
 #' @import ggplot2
 #' 
 #' @return a ggplot2 object
-#' @export
-#'
-#' @examples
-#' data(weibull_cc, package = "BayesFBHborrow")
-#' 
-#' # Set your tuning parameters
-#' tuning_parameters <- list("Jmax" = 5,
-#'                           "pi_b" = 0.5,
-#'                           "cprop_beta" = 0.5)
-#'                           
-#' # run the MCMC sampler
-#' out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters, 
-#'                       initial_values = NULL,
-#'                       iter = 10, warmup_iter = 1)
-#' 
-#' # Create a tarce plot of the treatment effect, beta_1
-#' time_grid <- seq(0, max(weibull_cc$tte), length.out = 2000)
-#' gg <- plot_trace(1:10, out$out_fixed$beta_1, 
-#'                   title = "Example trace plot",
-#'                   xlab = "iterations", ylab = "beta_1 (treatment effect)")
-plot_trace <- function(x_lim, samples, title = "", xlab = "", ylab = "", 
+.plot_trace <- function(x_lim, samples, title = "", xlab = "", ylab = "", 
                        color = "black", linewidth = 1) {
   trace_data <- data.frame(iterations = x_lim, samples = samples)
-
-  gg <- ggplot(trace_data, aes_string(x = "iterations", y = "samples")) +
+  
+  gg <- ggplot(trace_data, aes(x = .data$iterations, y = .data$samples)) +
     geom_line(color = color, linewidth = linewidth) +
     labs(x = xlab, y = ylab, title = title) +
     theme_minimal()
+  
   
   return(gg)
 }
@@ -265,63 +255,133 @@ plot_trace <- function(x_lim, samples, title = "", xlab = "", ylab = "",
 #' @import ggplot2
 #'
 #' @return a ggplot2 object
-#' @export
-#'
-#' @examples
-#' data(weibull_cc, package = "BayesFBHborrow")
-#' 
-#' # Set your tuning parameters
-#' tuning_parameters <- list("Jmax" = 5,
-#'                           "pi_b" = 0.5,
-#'                           "cprop_beta" = 0.5)
-#'                           
-#' # run the MCMC sampler
-#' out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters, 
-#'                       initial_values = NULL,
-#'                       iter = 10, warmup_iter = 1)
-#' 
-#' # Plot the frequency of the number of split points, J with a histogram
-#' time_grid <- seq(0, max(weibull_cc$tte), length.out = 2000)
-#' gg <- plot_hist(out$out_fixed$J, title = "Example histogram of J",
-#'                 scale_x = TRUE)
-plot_hist <- function(samples,  title = "", xlab = "Values", ylab = "Frequency", 
+.plot_hist <- function(samples,  title = "", xlab = "Values", ylab = "Frequency", 
                           color = "black", fill = "blue", binwidth = 0.05,
                           scale_x = FALSE) {
 
   if (scale_x == TRUE) {
-    gg <- ggplot(data.frame(values = samples), aes_string(x = "values")) +
+    gg <- ggplot(data.frame(values = samples), aes(x = .data$values)) +
       geom_histogram(binwidth = binwidth, fill = fill, color = color) +
       labs(x = xlab, y = ylab, title = title) +
-      scale_x_continuous(breaks = seq(min(samples), max(samples), by = 1)) + 
-      theme_minimal() 
+      scale_x_continuous(breaks = seq(min(samples), max(samples), by = 1)) +
+      theme_minimal()
   } else {
-    gg <- ggplot(data.frame(values = samples), aes_string(x = "values")) +
+    gg <- ggplot(data.frame(values = samples), aes(x = .data$values)) +
       geom_histogram(binwidth = binwidth, fill = fill, color = color) +
       labs(x = xlab, y = ylab, title = title) +
-      theme_minimal() 
+      theme_minimal()
   }
+  
 
   return(gg)
 }
 
+#' Predictive survival from BayesFBHborrow object
+#'
+#' @param grid_width size of time step
+#' @param out_slam samples from the smoothed baseline hazard
+#' @param x_pred set of predictors to be used for calculating the predictive survival
+#' @param beta_samples samples of the covariates
+#'
+#' @return matrix of the predictive survival
+.predictive_survival <- function(grid_width, out_slam, x_pred, beta_samples){
+  ##predictive survival - returns a grid for plot
+  if(length(x_pred) > 1){
+    xbeta <- beta_samples %*% x_pred
+  }else{
+    xbeta <- beta_samples * x_pred
+  }
+  integrand <- as.matrix(-(out_slam * exp(xbeta))) %*% diag(grid_width)
+  all_sp <- exp(t(apply(integrand, 1, cumsum)))
+  return(all_sp)
+}
+
+#' Predictive hazard from BayesFBHborrow object
+#'
+#' @param out_slam samples from the smoothed baseline hazard
+#' @param x_pred set of predictors to be used for calculating the predictive hazard
+#' @param beta_samples samples of the covariates
+#'
+#' @return matrix of the predictive hazard
+.predictive_hazard <- function(out_slam, x_pred, beta_samples){
+  ##predictive hazard - returns a grid for plot
+  if(length(x_pred) > 1){
+    xbeta <- beta_samples %*% x_pred
+  }else{
+    xbeta <- beta_samples * x_pred
+  }
+  all_ph <- out_slam * exp(xbeta)
+  return(all_ph)
+}
+
+#' Predictive hazard ratio (HR) from BayesFBHborrow object
+#'
+#' @param x_pred set of predictors to be used for calculating the predictive HR
+#' @param beta_samples samples of the covariates
+#'
+#' @return posterior samples for expectation and credible intervals
+.predictive_hazard_ratio <- function(x_pred, beta_samples){
+  if(length(x_pred) > 1){
+    xbeta <- beta_samples %*% x_pred
+  }else{
+    xbeta <- beta_samples * x_pred
+  }
+  phr <- exp(xbeta)
+  return(phr)
+}
+
+#' Smoothed hazard function
+#'
+#' @param out_slam samples from GibbsMH of the baseline hazard
+#' @param beta_samples samples from GibbsMH from the treatment effect
+#'
+#' @return smoothed function for the baseline hazard
+.smooth_hazard <- function(out_slam, beta_samples = NULL){
+  ##smooth hazard for trt / if no trt just average out_slam
+  if (is.null(beta_samples)) {
+    all_ph <- out_slam
+  } else {
+    all_ph <- out_slam * exp(beta_samples)
+  }
+  return(all_ph)
+}
+
+
+#' Smoothed survival curve
+#'
+#' @param grid_width step size
+#' @param out_slam samples from GibbsMH of the baseline hazard
+#' @param beta_samples samples from GibbsMH from the treatment effect
+#'
+#' @return smoothed survival function
+.smooth_survival <- function(grid_width, out_slam, beta_samples = NULL){
+  ##Smooth survival - beta_samples = NULL return control grid
+  if(is.null(beta_samples)){
+    integrand <- as.matrix(-out_slam) %*% diag(grid_width)
+  }else{
+    integrand <- as.matrix(-(out_slam * exp(beta_samples))) %*% diag(grid_width)
+  }
+  all_sp <- exp(t(apply(integrand, 1, cumsum)))
+  return(all_sp)
+}
+
+
 #' @title Plot the MCMC results
 #'
-#' @description S3 object which produces different plots depending on the 
-#' "type" variable
+#' @description S3 object which produces predictive probabilities of the survival,
+#' hazard, and hazard ratio for a given set of predictors
 #'
 #' @param x object of class "BayesFBHborrow" to be visualized
-#' @param x_lim x-axis to be used for plot
-#' @param estimator which estimate to be visualized
-#' @param type The type of plot to be produced, 
-#' "trace" will produce a trace plot of the "fixed" parameters, 
-#' "hist" will give a histogram for the "fixed" parameters, 
-#' and "matrix" will plot the mean and quantiles of a given sample.
-#' @param ... other plotting arguments, see plot_trace(), plot_hist(), plot_matrix()
+#' @param x_lim x-axis to be used for plot, set to NULL to use default from MCMC sampling
+#' @param x_pred vector of chosen predictors
+#' @param ... other plotting arguments, see .plot_matrix()
 #' for more information
 #'
 #' @importFrom graphics plot.default
+#' @import ggplot2
 #' 
-#' @return ggplot2 object
+#' @return nested list of 'plots' (posterior predictive hazard, survival, 
+#' and hazard ratio) as well as their samples.
 #' 
 #' @export
 #'
@@ -334,44 +394,48 @@ plot_hist <- function(samples,  title = "", xlab = "Values", ylab = "Frequency",
 #'                           "cprop_beta" = 0.5)
 #'                           
 #' # run the MCMC sampler
-#' out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters, 
-#'                       initial_values = NULL,
-#'                       iter = 10, warmup_iter = 1)
+#' out <- BayesFBHborrow(weibull_cc, NULL, tuning_parameters = tuning_parameters,
+#'                       iter = 3, warmup_iter = 1)
 #' 
-#' # Now let's create a variety of plots
-#' 
-#' # Staring with a histogram of beta_1 (treatment effect)
-#' gg_hist <- plot(out, NULL, estimator = "beta_1", type = "hist",
-#'                 title = "Example histogram of beta_1")
-#'
-#' # And an accompanied trace plot of the same parameter                 
-#' gg_trace <- plot(out, 1:10, estimator = "beta_1", type = "trace",
-#'                   title = "Example trace plot", xlab = "iterations",
-#'                   ylab = "beta_1 (treatment effect)")
-#'                   
-#' # Lastly. visualize the smoothed baseline hazard
-#' time_grid <- seq(0, max(weibull_cc$tte), length.out = 2000)
-#' gg_matrix <- plot(out, time_grid, estimator = "out_slam", type = "matrix",
-#'                   title = "Example plot of smoothed baseline hazard",
-#'                   xlab = "time", ylab = "baseline hazard")
-plot.BayesFBHborrow <- function(x, x_lim, estimator = NULL, type = NULL, ...) {
+#' # for the treatment group
+#' plots <- plot(out$out, out$out$time_grid, x_pred = c(1))
+plot.BayesFBHborrow <- function(x, x_lim, x_pred = NULL, ...) {
+  if(is.null(x_pred)) {
+    stop("Please specify set of predictors to use with 'x_pred', calling default")
+  } else if (length(x_pred) != length(x$beta_move)) {
+    stop("Length of 'x_pred' should be the same as the number of covariates")
+  }
   
-  if (is.null(type)) {
-    message("Please specify type of plot for BayesFBHborrow class object, calling default")
-    gg_object <- plot.default(x_lim, x, ...)
-    
-  } else if (type == "trace") {
-    samples = x[[1]]
-    gg_object <- plot_trace(x_lim = x_lim, samples = samples[[estimator]], ...)
-    
-  } else if (type == "hist") {
-    samples = x[[1]]
-    gg_object <- plot_hist(samples = samples[[estimator]], ...)
-      
-  } else if (type == "matrix") {
-    gg_object <- plot_matrix(x_lim = x_lim, y = x[[as.symbol(estimator)]], ...)
-    
-  } else {stop("'type' not recognized")}
+  bp <- length(x_pred)
+  tm1 <- c(0,x_lim)[-(length(x_lim)+1)]
+  grid_width <- x_lim-tm1
+  # Need the beta posterior samples as a matrix
+  beta_samples <- x$out_fixed[, 4:(3 + bp)] %>%
+    as.matrix()
   
-  return(gg_object)
+  
+  p <- list()
+  p$predictive_survival <- .predictive_survival(grid_width, x$out_slam, x_pred, beta_samples)
+  p$predictive_hazard <- .predictive_hazard(x$out_slam, x_pred, beta_samples)
+  p$predictive_hazard_ratio <- .predictive_hazard_ratio(x_pred, beta_samples)
+  
+  plots <- list()
+  
+  plots$predictive_survival <- .plot_matrix(x_lim = x_lim, y = p$predictive_survival, 
+                            title = "Smoothed posterior predictive survival", xlab = "Time", 
+                            ylab = "Survival function S(t|x)", ...)
+  plots$predictive_hazard <- .plot_matrix(x_lim = x_lim, y = p$predictive_hazard, 
+                                         title = "Smoothed posterior predictive hazard", xlab = "Time", 
+                                         ylab = "Hazard function h(t|x)", ...)
+  
+  # Plot the kernel density for the HR
+  plots$predictive_hazard_ratio <- ggplot(data.frame(x = p$predictive_hazard_ratio), aes(x = .data$x)) +
+    geom_density(fill = "blue", alpha = 0.5) +
+    labs(title = "Posterior predictive hazard ratio density", x = "Hazard ratio", y = "Density") +
+    theme_minimal()
+  
+
+  return(list("plots" = plots, "predictive_survival" = p$predictive_survival,
+              "predictive_hazard" = p$predictive_hazard, 
+              "predictive_hazard_ratio" = p$predictive_hazard_ratio))
 }

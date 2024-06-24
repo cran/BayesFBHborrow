@@ -37,10 +37,9 @@ tuning_parameters <- list("Jmax" = 5,
                           "cprop_beta" = 0.5)
                           
 # run the MCMC sampler
-out <- BayesFBHborrow(piecewise_exp_cc, NULL, tuning_parameters, 
-                      initial_values = NULL,
-                      iter = 10, warmup_iter = 1)
+out <- BayesFBHborrow(piecewise_exp_cc, NULL, tuning_parameters = tuning_parameters,
+                      iter = 3, warmup_iter = 1)
 
 # Create a summary of the output
-summary(out, estimator = "out_fixed")
+summary(out$out, estimator = "out_fixed")
 }

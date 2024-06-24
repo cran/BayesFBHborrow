@@ -34,17 +34,16 @@ test_that("Gibbs_NoBorrow: output parameters are correct", {
   
   expect_no_error(GibbsMH(Y, I, X, NULL, NULL, NULL, 
                           tuning_parameters,
-                          initial_parameters,
                           hyperparameters,
                           iter = iter))
   
   out <- GibbsMH(Y, I, X, NULL, NULL, NULL, 
                  tuning_parameters,
-                 initial_parameters,
+                 
                  hyperparameters,
                  iter = iter)
   # 6 outputs
-  expect_equal(length(out), 6)
+  expect_equal(length(out), 7)
   
   # 3 "fixed" parameters: J, mu, sigma
   expect_length(out$out_fixed, 3)
@@ -82,13 +81,13 @@ test_that("Gibbs_MH_NoBorrow runs for zero split points", {
   
   expect_true(all(!is.na(GibbsMH(Y, I, X, NULL, NULL, NULL, 
                                  tuning_parameters,
-                                          initial_parameters,
+                                          
                                          hyperparameters, 
                                          iter = 10)$out_fixed)))
   
   out <- GibbsMH(Y, I, X, NULL, NULL, NULL, 
                  tuning_parameters,
-                         initial_parameters,
+                         
                          hyperparameters, 
                          iter = 100)
   
@@ -119,13 +118,13 @@ test_that("Gibbs_MH_NoBorrow runs for covariates on historical data", {
   
   expect_true(all(!is.na(GibbsMH(Y, I, X, NULL, NULL, NULL, 
                                  tuning_parameters,
-                                         initial_parameters,
+                                         
                                          hyperparameters,
                                          iter = 10)$out_fixed)))
   
   expect_no_error(out <- GibbsMH(Y, I, X, NULL, NULL, NULL,
                                  tuning_parameters,
-                                 initial_parameters,
+                                 
                                  hyperparameters, 
                                  iter = 100))
   

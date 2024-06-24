@@ -33,7 +33,7 @@
       J <- initial_values$J
     if (hyperparameters$type != c("uni")) {
       borr_choice <- ifelse(hyperparameters$type == c("mix"), "mix", "all")
-      s <- (paste("Choice of borrowing:", borr_choice))
+      s <- (paste("Choice of borrow:", borr_choice))
       if (any(hyperparameters[c("c_tau", "d_tau")] == "NULL")) {
         stop(paste("specify hyperparameters for",
                    names(which(hyperparameters[c("c_tau", "d_tau")] == "NULL"))))
@@ -42,12 +42,12 @@
         stop("wrong dimension for tau, should be J+1")
       }
       else if (borr_choice == "all" && length(initial_values$tau) == J + 1) {
-        stop("Borrowing is 'all' but several initial values for tau were provided")
+        stop("borrow is 'all' but several initial values for tau were provided")
       }
     } else {
-      s <- "Choice of borrowing: uni"
+      s <- "Choice of borrow: uni"
       if (any(hyperparameters[c("c_tau", "d_tau")] != "NULL")) {
-        message("Borrowing is 'uni', choice of c_tau and d_tau will be ignored")
+        message("borrow is 'uni', choice of c_tau and d_tau will be ignored")
       }
       if (length(initial_values$tau) != J + 1) {
         stop("wrong dimension for tau, should be J+1")
@@ -109,20 +109,20 @@
     } else { # if no initial values are provided
       if (hyperparameters$type != c("uni")) {
       borr_choice <- ifelse(hyperparameters$type == c("mix"), "mix", "all")
-      s <- (paste("Choice of borrowing:", borr_choice))
+      s <- (paste("Choice of borrow:", borr_choice))
       if (any(hyperparameters[c("c_tau", "d_tau")] == "NULL")) {
         stop(paste("specify hyperparameters for",
                    names(which(hyperparameters[c("c_tau", "d_tau")] == "NULL"))))
       }
     } else {
-      s <- "Choice of borrowing: uni"
+      s <- "Choice of borrow: uni"
       if (any(hyperparameters[c("c_tau", "d_tau")] != "NULL")) {
-        message("Borrowing is 'uni', choice of c_tau and d_tau will be ignored")
+        message("borrow is 'uni', choice of c_tau and d_tau will be ignored")
         }
       }
     }
   } else if (!is.null(initial_values)) {
-    s <- "No borrowing"
+    s <- "No borrow"
     lambda <- initial_values[grepl("^lambda", names(initial_values))]
     beta <- initial_values[grepl("^beta", names(initial_values))]
     J <- initial_values$J
@@ -155,7 +155,7 @@
       }
 
   } else {
-    s <- "No borrowing"
+    s <- "No borrow"
   }
 
   return(invisible(s))
@@ -406,4 +406,139 @@ init_lambda_hyperparameters <- function(group_data, s, w = 0.5) {
   }
   
   return(list("shape" = shape, "rate" = rate, "t2" = t2))
+}
+
+#' Set tuning parameters
+#'
+#' @param tuning_parameters list of tuning_parameters, could contain any combination
+#' of the listed tuning parameters
+#' @param borrow choice of borrow, could be TRUE or FALSE
+#' @param X design matrix for concurrent trial
+#' @param X_0 design matrix for historical trial
+#'
+#' @return filled list of tuning_parameters
+.set_tuning_parameters <- function(tuning_parameters = NULL, borrow, X, 
+                                   X_0 = NULL) {
+  tuning_parameters_out <- tuning_parameters
+  
+  if (borrow) {
+    n_beta = ncol(X)
+    defaults <- list("Jmax" = 5,
+                     "pi_b" = 0.5,
+                     "alpha" = 0.4,
+                     "cprop_beta" = 0.5
+    )
+    
+    if (!is.null(X_0)) {
+      defaults$cprop_beta_0 <- 0.5
+    }
+    
+    for (key in names(defaults)) {
+      if (!key %in% names(tuning_parameters)) {
+        tuning_parameters_out[[key]] <- defaults[[key]]
+      }
+    }
+    
+  } else {
+    n_beta = ncol(X)
+    defaults <- list("Jmax" = 5,
+                     "pi_b" = 0.5,
+                     "cprop_beta" = 0.5)
+    
+    for (key in names(defaults)) {
+      if (!key %in% names(tuning_parameters)) {
+        tuning_parameters_out[[key]] <- defaults[[key]]
+      }
+    }
+  }
+  
+  set_to_default <- setdiff(names(tuning_parameters_out), names(tuning_parameters))
+  if (length(set_to_default) > 0) {
+    default_params_str <- paste(set_to_default, collapse = ", ")
+    message("The following tuning_parameters were set to default: ", default_params_str)
+  }
+  return(tuning_parameters_out)
+}
+
+#' Set tuning parameters
+#'
+#' @param hyperparameters list of hyperparameters, could contain any combination
+#' of the listed hyperparameters
+#' @param model_choice choice of model, could be either of 'mix', 'uni' or 'all'
+#'
+#' @return filled list of tuning_parameters
+.set_hyperparameters <- function(hyperparameters = NULL, model_choice) {
+  hyperparameters_out <- hyperparameters
+  if (model_choice == "mix") {
+    defaults <- list("a_tau" = 1,
+                    "b_tau" = 0.001,
+                    "c_tau" = 1,
+                    "d_tau" = 1,
+                    "type" = "mix",
+                    "p_0" = 0.8,
+                    "a_sigma" = 1,
+                    "b_sigma" = 1,
+                    "phi" = 3, 
+                    "clam_smooth" = 0.8)
+    
+    for (key in names(defaults)) {
+      if (!key %in% names(hyperparameters)) {
+        hyperparameters_out[[key]] <- defaults[[key]]
+      }
+    }
+    
+  } else if (model_choice == "all") {
+    defaults <- list("a_tau" = 1,
+                     "b_tau" = 0.001,
+                     "c_tau" = 1,
+                     "d_tau" = 1,
+                     "type" = "all",
+                     "p_0" = 0.8,
+                     "a_sigma" = 1,
+                     "b_sigma" = 1,
+                     "phi" = 3, 
+                     "clam_smooth" = 0.8)
+    
+    for (key in names(defaults)) {
+      if (!key %in% names(hyperparameters)) {
+        hyperparameters_out[[key]] <- defaults[[key]]
+      }
+    }
+    
+  } else if (model_choice == "uni") {
+    defaults <- list("a_tau" = 1,
+                     "b_tau" = 0.001,
+                     "type" = "uni",
+                     "a_sigma" = 1,
+                     "b_sigma" = 1,
+                     "phi" = 3, 
+                     "clam_smooth" = 0.8)
+  
+  for (key in names(defaults)) {
+    if (!key %in% names(hyperparameters)) {
+      hyperparameters_out[[key]] <- defaults[[key]]
+      }
+  }
+    
+  } else if (model_choice == "no_borrow") {
+    defaults <- list("a_sigma" = 1,
+                     "b_sigma" = 1,
+                     "phi" = 3, 
+                     "clam_smooth" = 0.8)
+    
+    for (key in names(defaults)) {
+      if (!key %in% names(hyperparameters)) {
+        hyperparameters_out[[key]] <- defaults[[key]]
+      }
+    }
+  }
+  
+  set_to_default <- setdiff(names(hyperparameters_out), names(hyperparameters))
+  set_to_default <- set_to_default[set_to_default != "type"]
+  if (length(set_to_default) > 0) {
+    default_params_str <- paste(set_to_default, collapse = ", ")
+    message("The following hyperparameters were set to default: ", default_params_str)
+  }
+  message("Choice of borrowing: ", model_choice)
+  return(hyperparameters_out)
 }
