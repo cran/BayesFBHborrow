@@ -25,21 +25,20 @@ and "event" (censoring), and covariates "X_i" (where i should be a number/
 indicator of the covariate)}
 
 \item{data_hist}{data.frame containing atleast two vectors of "tte" 
- (time-to-event) and "event" (censoring), with the option of adding covariates
- named "X_0_i" (where i should be a number/
-indicator of the covariate), for historical
- data}
+(time-to-event) and "event" (censoring), with the option of adding covariates
+named "X_0_i" (where i should be a number/indicator of the covariate), for 
+historical data}
 
 \item{borrow}{TRUE (default), will run the model with borrowing}
 
-\item{model_choice}{choice of which borrowing model to use out of 'mix', 'uni'
-or 'all'}
+\item{model_choice}{choice of which borrowing model to use out of "mix", "uni"
+or "all"}
 
-\item{tuning_parameters}{list of "cprop_beta" ("cprop_beta_0" for historical data), "alpha", "Jmax",
-and "pi_b". Default is ("Jmax" = 5, "clam_smooth" = 0.8, "cprop_beta" = 0.5, 
-"cprop_beta_0"  = 0.5, "pi_b" = 0.5)}
+\item{tuning_parameters}{list of "cprop_beta" ("cprop_beta_0" for historical data),
+"alpha", "Jmax", and "pi_b". Default is list("Jmax" = 5, "clam_smooth" = 0.8,
+"cprop_beta" = 0.5, "cprop_beta_0"  = 0.5, "pi_b" = 0.5, "alpha" = 0.4)}
 
-\item{hyperparameters}{list containing the hyperparameters c("a_tau", "b_tau",
+\item{hyperparameters}{list containing the hyperparameters ("a_tau", "b_tau",
 "c_tau", "d_tau","type", "p_0", "a_sigma", "b_sigma"). Default is list("a_tau" = 1,
 "b_tau" = 1,"c_tau" = 1, "d_tau" = 0.001, "type" = "mix", "p_0" = 0.5, 
 "a_sigma" = 2, "b_sigma" = 2, "phi" = 3)}
@@ -56,7 +55,7 @@ used for the update of lambda and lambda_0. Default is c(0.01, 0.01)}
 \item{verbose}{FALSE (default), choice of output, if TRUE will output 
 intermittent results into console}
 
-\item{max_grid}{grids size for the smoothed baseline hazard}
+\item{max_grid}{grid size for the smoothed baseline hazard}
 }
 \value{
 a nested list of two items, 'out' and 'plots'. The list 'out' will

@@ -2,7 +2,7 @@
 % Please edit documentation in R/beta_updates.R
 \name{.beta_MH_RW}
 \alias{.beta_MH_RW}
-\title{Beta Metropolis-Hastings Random walk move}
+\title{Beta Metropolis-Hastings random walk move}
 \usage{
 .beta_MH_RW(df, beta, bp, cprop_beta, beta_count)
 }

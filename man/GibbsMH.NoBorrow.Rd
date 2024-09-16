@@ -37,9 +37,11 @@
 and "pi_b"}
 
 \item{hyperparameters}{list containing the hyperparameters c("a_sigma",
-"b_sigma", "clam_smooth", "phi").}
+"b_sigma", "Jmax", "clam_smooth", "cprop_beta", "phi"). Default is 
+list("a_sigma" = 2, "b_sigma" = 2, "Jmax" = 20, "clam_smooth" = 0.8, 
+"cprop_beta" = 0.5, "phi" = 3)}
 
-\item{lambda_hyperparameters}{contains two hyperparameters (a_lambda and b_lambda) used for
+\item{lambda_hyperparameters}{contains two hyperparameters ("a" and "b") used for
 the update of lambda, default is c(0.01, 0.01)}
 
 \item{iter}{number of iterations for MCMC sampler, excluding warmup, 

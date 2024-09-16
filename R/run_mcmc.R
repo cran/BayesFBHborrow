@@ -4,31 +4,30 @@
 #' calls the correct MCMC sampler for time-to-event Bayesian borrowing. 
 #'
 #' @param data data.frame containing atleast three vectors of "tte" (time-to-event)
-#' and "event" (censoring), and covariates "X_i" (where i should be a number/
-#' indicator of the covariate)
+#'  and "event" (censoring), and covariates "X_i" (where i should be a number/
+#'  indicator of the covariate)
 #' @param data_hist data.frame containing atleast two vectors of "tte" 
 #'  (time-to-event) and "event" (censoring), with the option of adding covariates
-#'  named "X_0_i" (where i should be a number/
-#' indicator of the covariate), for historical
-#'  data
+#'  named "X_0_i" (where i should be a number/indicator of the covariate), for 
+#'  historical data
 #' @param borrow TRUE (default), will run the model with borrowing
-#' @param model_choice choice of which borrowing model to use out of 'mix', 'uni'
-#' or 'all'
-#' @param tuning_parameters list of "cprop_beta" ("cprop_beta_0" for historical data), "alpha", "Jmax",
-#' and "pi_b". Default is ("Jmax" = 5, "clam_smooth" = 0.8, "cprop_beta" = 0.5, 
-#' "cprop_beta_0"  = 0.5, "pi_b" = 0.5)
-#' @param hyperparameters list containing the hyperparameters c("a_tau", "b_tau",
+#' @param model_choice choice of which borrowing model to use out of "mix", "uni"
+#'  or "all"
+#' @param tuning_parameters list of "cprop_beta" ("cprop_beta_0" for historical data),
+#'  "alpha", "Jmax", and "pi_b". Default is list("Jmax" = 5, "clam_smooth" = 0.8,
+#'  "cprop_beta" = 0.5, "cprop_beta_0"  = 0.5, "pi_b" = 0.5, "alpha" = 0.4)
+#' @param hyperparameters list containing the hyperparameters ("a_tau", "b_tau",
 #'  "c_tau", "d_tau","type", "p_0", "a_sigma", "b_sigma"). Default is list("a_tau" = 1,
 #'  "b_tau" = 1,"c_tau" = 1, "d_tau" = 0.001, "type" = "mix", "p_0" = 0.5, 
 #'  "a_sigma" = 2, "b_sigma" = 2, "phi" = 3)
 #' @param lambda_hyperparameters contains two hyperparameters (a_lambda and b_lambda)
-#' used for the update of lambda and lambda_0. Default is c(0.01, 0.01)
+#'  used for the update of lambda and lambda_0. Default is c(0.01, 0.01)
 #' @param iter number of iterations for MCMC sampler
 #' @param warmup_iter number of warmup iterations (burn-in) for MCMC sampler.
 #' @param refresh number of iterations between printed screen updates
 #' @param verbose FALSE (default), choice of output, if TRUE will output 
-#' intermittent results into console
-#' @param max_grid grids size for the smoothed baseline hazard
+#'  intermittent results into console
+#' @param max_grid grid size for the smoothed baseline hazard
 #'
 #' @export
 #' 
@@ -81,19 +80,19 @@ BayesFBHborrow <- function(data, data_hist = NULL, borrow = TRUE, model_choice,
 #' calls the correct MCMC sampler for time-to-event Bayesian borrowing. 
 #' 
 #' @param data data.frame containing atleast three vectors called "tte" 
-#' (time-to-event), "event" (censoring), and covariates "X_i" (where i should be a number/
-#' indicator of the covariate)
+#' (time-to-event), "event" (censoring), and covariates "X_i" (where i should be
+#'  a number/indicator of the covariate)
 #' @param data_hist data.frame containing atleast two vectors called "tte" 
 #'  (time-to-event) and "event" (censoring), with the option of adding covariates
-#'  named "X_0_i" (where i should be a number/
-#' indicator of the covariate), for historical data
+#'  named "X_0_i" (where i should be a number/indicator of the covariate) for 
+#'  the historical data
 #' @param borrow TRUE (default), will run the model with borrowing
 #' @param model_choice choice of which borrowing model to use out of 'mix', 'uni'
-#' or 'all'
-#' @param tuning_parameters list of "cprop_beta" ("cprop_beta_0" for historical data), "alpha", "Jmax",
-#' and "pi_b". Default is ("Jmax" = 5, "clam_smooth" = 0.8, "cprop_beta" = 0.5, 
-#' "cprop_beta_0"  = 0.5, "pi_b" = 0.5)
-#' @param hyperparameters list containing the hyperparameters c("a_tau", "b_tau",
+#'  or 'all'
+#' @param tuning_parameters list of "cprop_beta" ("cprop_beta_0" for historical data),
+#'  "alpha", "Jmax", and "pi_b". Default is list("Jmax" = 5, "clam_smooth" = 0.8,
+#'  "cprop_beta" = 0.5, cprop_beta_0"  = 0.5, "pi_b" = 0.5, "alpha" = 0.4)
+#' @param hyperparameters list containing the hyperparameters ("a_tau", "b_tau",
 #'  "c_tau", "d_tau","type", "p_0", "a_sigma", "b_sigma"). Default is list("a_tau" = 1,
 #'  "b_tau" = 1,"c_tau" = 1, "d_tau" = 0.001, "type" = "mix", "p_0" = 0.5, 
 #'  "a_sigma" = 2, "b_sigma" = 2, "phi" = 3)

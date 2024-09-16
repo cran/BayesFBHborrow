@@ -33,13 +33,14 @@ GibbsMH(
 
 \item{X_0}{historical design matrix, default is NULL}
 
-\item{tuning_parameters}{list of "cprop_beta" ("cprop_beta_0" for historical data), "alpha", "Jmax",
-and "pi_b".}
+\item{tuning_parameters}{list of "cprop_beta", "cprop_beta_0", "alpha", "Jmax",
+and "pi_b"}
 
 \item{hyperparameters}{list containing the hyperparameters c("a_tau", "b_tau",
-"c_tau", "d_tau","type", "p_0", "a_sigma", "b_sigma"). Default is list("a_tau" = 1,
-"b_tau" = 1,"c_tau" = 1, "d_tau" = 0.001, "type" = "mix", "p_0" = 0.5, 
-"a_sigma" = 2, "b_sigma" = 2, "phi" = 3)}
+ "c_tau", "d_tau","type", "p_0", "a_sigma", "b_sigma", "Jmax", "clam_smooth",
+ "cprop_beta", "phi", "pi_b"). Default is list("a_tau" = 1,"b_tau" = 1,"c_tau" = 1,
+"d_tau" = 0.001, "type" = "mix", "p_0" = 0.5, "a_sigma" = 2, "b_sigma" = 2,
+"Jmax" = 20, "clam_smooth" = 0.8, "cprop_beta" = 0.5, "phi" = 3, "pi_b" = 0.5)}
 
 \item{lambda_hyperparameters}{contains two hyperparameters (a_lambda and b_lambda) used 
 for the update of lambda and lambda_0}

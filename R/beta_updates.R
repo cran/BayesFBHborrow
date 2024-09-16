@@ -20,7 +20,7 @@
 }
 
 
-#' @title Beta Metropolis-Hastings Random walk move
+#' @title Beta Metropolis-Hastings random walk move
 #' @description Update beta via a Metropolis-Hastings Random Walk move
 #'
 #' @param df data.frame from dataframe_fun()
