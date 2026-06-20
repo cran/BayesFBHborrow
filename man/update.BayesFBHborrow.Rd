@@ -1,25 +1,24 @@
-\name{BayesFBHborrow}
-\alias{BayesFBHborrow}
+\name{update.BayesFBHborrow}
+\alias{update.BayesFBHborrow}
 \title{
-Fit the Bayesian Flexible Baseline Hazard Model with Borrowing via MCMC/MH
+ The Update Method for the \code{BayesFBHborrow} Class
 }
 \description{
-  Fits the Bayesian Flexible Baseline Hazard Model with Borrowing via
-  MCMC/MH. Each sample in the Gibbs sampler is a piecewise exponential
-  model, with prior over number and location of split
-  points. Accommodates borrowing over a historical control arm as well
-  as G-computation. 
+ The Update Method for the \code{BayesFBHborrow} Class
 }
 \usage{
-BayesFBHborrow(formula = NULL, data, data_hist = NULL, subset, na.action,
-               CntlOnly = FALSE, model_choice = "mix", tuning_parameters = NULL,
-               hyperparameters = NULL, iter = 1000, warmup_iter = 100,
-               refresh = 0, verbose = FALSE, max_grid = 2000, standardise = TRUE,
-               G_compute = FALSE, preprocess = TRUE, fnm_cnd_blh = "cnd_blh",
-               fnm_mgnl_haz0 = "mgnl_haz0", fnm_mgnl_haz1 = "mgnl_haz1",
-               dbg = FALSE, ...)
+update.BayesFBHborrow(object, formula = NULL, data, data_hist = NULL,
+                      subset, na.action, CntlOnly = FALSE, model_choice = "mix",
+                      tuning_parameters = NULL, hyperparameters = NULL, iter = 1000,
+                      warmup_iter = 100, refresh = 0, verbose = FALSE, max_grid = 2000,
+                      standardise = TRUE, G_compute = FALSE, preprocess = TRUE,
+                      fnm_cnd_blh = "cnd_blh", fnm_mgnl_haz0 =  "mgnl_haz0",
+                      fnm_mgnl_haz1 = "mgnl_haz1", dbg = FALSE, ...) 
 }
 \arguments{
+  \item{object}{
+    An object of class \code{BayesFBHborrow}
+  }
   \item{formula}{
     Optional but most likely preferred. When using the formula/data
     interface, specify the formula in the form typically used in other
@@ -175,52 +174,16 @@ BayesFBHborrow(formula = NULL, data, data_hist = NULL, subset, na.action,
   }
 }
 \details{
-  BayesFBHborrow implements our semiparametric Bayesian borrowing model
-  allowing inferences on a current trial with commensurate Bayesian
-  borrowing from a set of historical controls. The model supports
-  covariate adjusted borrowing, which can reduce prior-data conflict and
-  improve power when differences in outcomes are attributable to changes
-  in covariate distribution. As the treatment effect estimator is
-  non-collapsible, the marginal hazard ratio can be estimated via
-  Bayesian G-computation, while still permitting an adjusted analysis to
-  account for control group drift.
+  Note that the marginal contrast is always computed in addition to the
+  conditional estimand. If \code{G_compute=FALSE}, (the default) in the
+  original call, the print, coef, summary and plot methods will
+  produce results reflecting the conditional estimand, whereas these
+  will reflect the marginal contrast otherwise. NOTE: calling 
+  \code{update(my_bfbhb, G_compute=TRUE)} doesn't require rerunning the
+  sampler as the results are already there. 
 }
 \value{
-  \item{Y}{Times on study in the 'data' argument data.frame, scaled to
-    unit event rate.}
-  \item{I}{Event indicators in the 'data' argument data.frame}  
-  \item{X}{Treatment indicator and pretreatment covariates in the 'data'
-    argument data.frame, recoded if 'prepocess' is TRUE.}  
-  \item{Y_0}{Times on study in the 'data_hist' argument data.frame,
-    scaled to unit event rate.} 
-  \item{I_0}{Event indicators in the 'data_hist' argument data.frame}
-  \item{X_0}{Pretreatment covariates in the 'data_hist' argument
-    data.frame, recoded if 'prepocess' is TRUE.} 
-  \item{samples}{An 'iter' by ncol(X) + 3*J + 4 matrix containing all
-    post warmup samples from the MCMC sampler: the model coefficients,
-    the number of split points, hyperparameters mu and sigma2, the
-    locations of all split points and the values of the piecewise
-    exponential hazards corresponding to the current trial and to the
-    historical controls data distributions.}
-  \item{surv_dat}{Median together with 95 percent credible interval of
-    posterior samples of the per arm conditional hazards/survival
-    functions, per arm marginal hazard/survival functions, 
-    and marginal treatment effect at each time point on the fine meshed
-    grid of length 'max_grid'.}
-  \item{MTE_dens_dfs}{kernel density estimates for samples of the
-    posterior distribution of the marginal treatment effect at
-    information fraction 25, 50, 75 and 100 percent.}
-  \item{T.if}{Times on study at 25, 50, 75 and 100 percent information.} 
-  \item{fnms}{File names of binary files of snapped to fine meshed grid
-    hazard function samples from the posterior. Provided for calculating
-    custom functionals of the hazard function posterior distribution.}
-  \item{beta_acc_ratio}{Metropolis-Hastings algorithm acceptance ratio
-    for current data model coefficients. Find value of cprop_beta in
-    tuning_parameters which results in this being between 0.30 and 0.40.}
-  \item{beta_0_acc_ratio}{Metropolis-Hastings algorithm acceptance ratio
-    for historical data model coefficients. Find value of cprop_beta in 
-    tuning_parameters which results in this being between 0.30 and 0.40.} 
-  \item{call}{The call which produced the object.}
+  An object of class \code{BayesFBHborrow}. See the documentation.
 }
 \references{
   Scott DAV and Lewin A (2026). Borrowing from historical
@@ -239,59 +202,9 @@ BayesFBHborrow(formula = NULL, data, data_hist = NULL, subset, na.action,
   \code{"BayesFBHborrow"} objects
 }
 \examples{
-n_cc_1 <- 200
-n_cc_0 <- 100
-n_hst <- 100
-int_cc <- int_hst <- -log(3)
-B_x_cc <- B_x_hst <- c(-0.3,0.5,0.25,-0.5)
-B_trt <- log(0.55)
-
-dat_lst <- 
-    genBFBHBdat(n_cc_1=200, n_cc_0=100, n_hst=100,
-                B_trt=B_trt, B_x_cc=B_x_cc, B_x_hst=B_x_hst, 
-                int_cc=int_cc, int_hst=int_hst, shape=2,
-                t_er=0.5, t_fin=1.5, X_fact_levs=3)
-
-DAT_cc <- dat_lst$DAT_cc
-DAT_hst <- dat_lst$DAT_hst
-
-## using default settings for hyperparameters and tuning parameters
-## formula interface
-## cntls only; no cov's
-  \dontrun{
-    test_f0 <- BayesFBHborrow(Surv(tte, event)~1, data = DAT_hst,
-                              CntlOnly=TRUE, iter = 200, warmup_iter = 50,
-                              refresh = 0, verbose = FALSE)
-
-    ## cntls only; with cov's
-    test_f1 <- BayesFBHborrow(Surv(tte, event) ~ X_01 + X_02 + X_03,
-                              data = DAT_hst, CntlOnly=TRUE,
-                              iter = 200, warmup_iter = 50, refresh = 0,
-                              verbose = FALSE)
-    
-    ##  trtd+cntls; w/o borrow; no cov's: 
-    test_f2 <- BayesFBHborrow(Surv(tte, event) ~ X_trt, data = DAT_cc,
-                              iter = 200, warmup_iter = 50, refresh = 0,
-                              verbose = FALSE)
-    
-    ## trtd+cntls; w borrow, no cov's:
-    test_f3 <- BayesFBHborrow(Surv(tte, event) ~ X_trt, data = DAT_cc,
-                              data_hist = DAT_hst, model_choice = 'mix',
-                              iter = 200, warmup_iter = 50, refresh = 0,
-                              verbose = FALSE)
-
-    ##  trtd+cntls; w/o borrow; w cov's: 
-    test_f4 <- BayesFBHborrow(Surv(tte, event) ~ X_trt + X_01 + X_02 + X_03,
-                              data = DAT_cc, model_choice = 'mix',
-                              iter = 200, warmup_iter = 50, refresh = 0,
-                              verbose = FALSE)
-    
-    ## trtd+cntls; w borrow, w cov's:
-    test_f5 <- BayesFBHborrow(Surv(tte, event) ~ X_trt + X_01 + X_02 + X_03,
-                              data = DAT_cc, data_hist = DAT_hst,
-                              model_choice = 'mix', iter = 10, warmup_iter = 5,
-                              refresh = 0, verbose = FALSE)
-  }
+    \dontrun{
+       update(my_bfbhb, G_compute=TRUE)
+    }
 }
 \concept{Bayesian borrowing}
 \concept{flexible baseline hazard}

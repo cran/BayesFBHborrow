@@ -1,0 +1,38 @@
+"%,%" <- paste0
+
+citHeader("To cite BayesFBHborrow in publications, use:")
+
+bibentry(bibtype = "article",
+             key = "ScottD:2026a",
+           title = "Borrowing from historical control data in a Bayesian time-to-event " %,%
+                   "model with flexible baseline hazard function",
+          author = c(person(family="Scott", given="Darren A. V."),
+                     person(family="Lewin", given="Alex")),
+            year = "2026",
+         journal = "Biostatistics", 
+          volume = "27",
+          number = "1",
+            issn = "1465-4644",
+             doi = "10.1093/biostatistics/kxag006",
+             url = "https://doi.org/10.1093/biostatistics/kxag006",
+          eprint = "https://academic.oup.com/biostatistics/article-pdf/27/1/kxag006/68051730/kxag006.pdf",
+     textVersion = "Scott, Darren A. V. and Alex Lewin (2026). " %,%
+                    "Borrowing from historical control data in a Bayesian time-to-event model " %,%
+                    "with flexible baseline hazard function. " %,%
+                    "Biostatistics 27(1)")
+
+bibentry(bibtype = "article",
+             key = "ScottD:2026b",
+           title = "BayesFBHborrow: An R Package for Bayesian borrowing for time-to-event " %,%
+                   "data from a flexible baseline hazard function. ",
+          author = c(person(family="Scott", given="Darren A. V."),
+                     person(family="Axillus", given="Sophia"), 
+                     person(family="Lewin", given="Alex"),
+                     person(family="Izmirlian", given="Grant")),
+         journal = "arXiv",
+            year = "2026",
+         textVersion = "Scott, Darren A. V., Axillus Sophia, Lewin, Alex and Izmirlian, Grant (2026). " %,%
+                   "BayesFBHborrow: An R Package for Bayesian borrowing for time-to-event " %,%
+                   "data from a flexible baseline hazard function. " %,%
+                   "<doi:10.48550/arXiv.2408.04327>")
+
