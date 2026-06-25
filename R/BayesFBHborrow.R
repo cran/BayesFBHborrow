@@ -677,7 +677,22 @@ GibbsMH_wborrow <- function(Y,
   time_grid <- seq(1e-8, max(Y), length.out =  max_grid)
 
   ## open binary file for writing out adjusted baseline hazard
-  conn_cnd_blh <- file(fnm_cnd_blh, "wb")
+  conn3 <- list()
+  ## open binary file for writing out adjusted baseline hazard
+  if(bp <= 1 || CntlOnly)
+  {
+    conn3$cnd_blh <- file(fnm_cnd_blh, "wb")
+
+    on.exit({
+      if (exists("conn3")) {
+        invisible(lapply(conn3, function(con) {
+          if (inherits(con, "connection")) {
+            try(close(con), silent = TRUE)
+          }
+        }))
+      }
+    }, add = TRUE)
+  }
 
   ## 1) ARRAY out_slam iter x max_grid(2000) ## conditional baseline hazards
   ## out_slam <-  data.frame(matrix(data = NA, nrow = 0, ncol =  max_grid))
@@ -691,8 +706,21 @@ GibbsMH_wborrow <- function(Y,
 
     ## If doing G-computation, open binary file for writing out
     ## conditional hazards in treatment (1) and control (0) arms
-    conn_mgnl_haz1 <- file(fnm_mgnl_haz1, "wb")
-    conn_mgnl_haz0 <- file(fnm_mgnl_haz0, "wb")
+    conn3 <- list(
+		   cnd_blh = file(fnm_cnd_blh, "wb"),
+		   mgnl_haz0 = file(fnm_mgnl_haz0, "wb"),
+		   mgnl_haz1 = file(fnm_mgnl_haz1, "wb")
+		 )
+
+    on.exit({
+      if (exists("conn3")) {
+        invisible(lapply(conn3, function(con) {
+          if (inherits(con, "connection")) {
+            try(close(con), silent = TRUE)
+          }
+        }))
+      }
+    }, add = TRUE)
 
     ## 2) ARRAY lhaz_bar_trt iter x max_grid(2000) marginal treat hazard(t)
     ## lhaz_bar_trt <- data.frame(matrix(NA, nrow = 0, ncol = max_grid))
@@ -833,7 +861,7 @@ GibbsMH_wborrow <- function(Y,
       lambda_s <- lambda[indx]
       ## 1) ARRAY
       ## out_slam[j,] <- lambda_s
-      writeBin(lambda_s, conn_cnd_blh)
+      writeBin(lambda_s, conn3$cnd_blh)
 
       if(bp > 1 && !CntlOnly){
         #G-computation for marginal hazard ratio
@@ -846,7 +874,7 @@ GibbsMH_wborrow <- function(Y,
                                           w_sxn_ts)
         ## 2) ARRAY
         ## lhaz_bar_trt[j,] <- lhaz_up_trt
-        writeBin(lhaz_up_trt, conn_mgnl_haz1)
+        writeBin(lhaz_up_trt, conn3$mgnl_haz1)
 
         w_sxn_cs <- w_sxn_con[j,]
         beta_c <- beta[-1]
@@ -857,7 +885,7 @@ GibbsMH_wborrow <- function(Y,
                                           w_sxn_cs)
         ## 3) ARRAY
         ## lhaz_bar_con[j,] <- lhaz_up_con
-        writeBin(lhaz_up_con, conn_mgnl_haz0)
+        writeBin(lhaz_up_con, conn3$mgnl_haz0)
       }
 
       # for
@@ -867,22 +895,32 @@ GibbsMH_wborrow <- function(Y,
   }
 
   ## Close binary files
-  if(bp > 1 && !CntlOnly){
-      close(conn_mgnl_haz0)
-      close(conn_mgnl_haz1)
-      ##   out_list[["lhaz_bar_trt"]] <- lhaz_bar_trt
-      ##   out_list[["lhaz_bar_con"]] <- lhaz_bar_con
-  }
-  close(conn_cnd_blh)
+  lapply(conn3, close)
+
   ### END MCMC/MH loop
 
 
   ## Begin summary statistic block
   ## open binary files for reading
-  if(file.exists(fnm_cnd_blh)) conn_cnd_blh <- file(fnm_cnd_blh, "rb")
+  conn3 <- list()
+  ## Begin summary statistic block
+  ## open binary files for reading
+  if(bp <= 1 || CntlOnly)
+    if(file.exists(fnm_cnd_blh)) 
+      conn3$cnd_blh <- file(fnm_cnd_blh, "rb")
+
   if(bp > 1 && !CntlOnly){
-      if(file.exists(fnm_mgnl_haz1)) conn_mgnl_haz1 <- file(fnm_mgnl_haz1, "rb")
-      if(file.exists(fnm_mgnl_haz0)) conn_mgnl_haz0 <- file(fnm_mgnl_haz0, "rb")
+      all_files <- file.exists(fnm_mgnl_haz0) &&
+                   file.exists(fnm_mgnl_haz1) &&
+                   file.exists(fnm_cnd_blh)
+      if(all_files) 
+      {
+	  conn3 <- list(
+                         cnd_blh = file(fnm_cnd_blh, "rb"),
+                         mgnl_haz0 = file(fnm_mgnl_haz0, "rb"),
+                         mgnl_haz1 = file(fnm_mgnl_haz1, "rb")
+	               )
+      }
   }
 
   ## compute summary statistics
@@ -909,7 +947,7 @@ GibbsMH_wborrow <- function(Y,
   ## 1st line: cumsum over time grid per row
   ## 2nd line: mean over iterations, per column
   ## 3rd line: ci over iterations, per column
-  cnd_haz_0 <- matrix(readBin(conn_cnd_blh, what="double", n=max_grid*iter), max_grid, iter)*stdz
+  cnd_haz_0 <- matrix(readBin(conn3$cnd_blh, what="double", n=max_grid*iter), max_grid, iter)*stdz
   med_cnd_haz_0 <- apply(cnd_haz_0, 1, FUN=median)
   CI_cnd_haz_0 <- t(apply(cnd_haz_0, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))
 
@@ -954,8 +992,8 @@ GibbsMH_wborrow <- function(Y,
   ## put them in MTE_dens_dfs
   if(bp > 1 && !CntlOnly)
   {
-      log_mgnl_haz_0 <- matrix(readBin(conn_mgnl_haz0, what = "double", n = max_grid * iter), max_grid, iter) * stdz
-      log_mgnl_haz_1 <- matrix(readBin(conn_mgnl_haz1, what = "double", n = max_grid * iter), max_grid, iter) * stdz
+      log_mgnl_haz_0 <- matrix(readBin(conn3$mgnl_haz0, what = "double", n = max_grid * iter), max_grid, iter) * stdz
+      log_mgnl_haz_1 <- matrix(readBin(conn3$mgnl_haz1, what = "double", n = max_grid * iter), max_grid, iter) * stdz
 
       ## marginal hazard from logged marginal hazard per sample
       mgnl_haz_0 <- exp(log_mgnl_haz_0)
@@ -1013,11 +1051,9 @@ GibbsMH_wborrow <- function(Y,
   }
 
   ## Close binary files
-  if(bp > 1 && !CntlOnly){
-      close(conn_mgnl_haz1)
-      close(conn_mgnl_haz0)
-  }
-  close(conn_cnd_blh)
+      ## taken care of by instance of handler on first 
+      ## open for writing?
+  ##
   ## End summary statistics block
 
   ## reorganize some of the output
@@ -1228,19 +1264,48 @@ GibbsMH_noborrow <- function(Y,
   #Max number of grid points
   time_grid <- seq(1e-8, max(Y), length.out = max_grid)
 
-  conn_cnd_blh <- file(fnm_cnd_blh, "wb")
+  ###d added
+  conn3 <- list()
+  if(bp <= 1 || CntlOnly)                           
+  {
+    conn3$cnd_blh <- file(fnm_cnd_blh, "wb")            
 
-  ## out_slam <-  data.frame(matrix(data = NA, nrow = 0, ncol = max_grid))
+    on.exit({
+      if (exists("conn3")) {
+        invisible(lapply(conn3, function(con) {
+          if (inherits(con, "connection")) {
+            try(close(con), silent = TRUE)
+          }
+        }))
+      }
+    }, add = TRUE)
+  }
+  ## 1) ARRAY out_slam iter x max_grid(2000) ## conditional b>
+  ## out_slam <-  data.frame(matrix(data = NA, nrow = 0, ncol>
   ## colnames(out_slam) <- time_grid
-
-  # Array for marginal estimand
-  if(bp > 1 && !CntlOnly){
+  ## Array for marginal estimand from G-computation
+  if(bp > 1 && !CntlOnly){                  
     nx <- nrow(X)
     trtAX <- cbind(rep(1, nx), as.matrix(X[,-1]))
     conAX <- as.matrix(X[,-1])
 
-    conn_mgnl_haz1 <- file(fnm_mgnl_haz1, "wb")
-    conn_mgnl_haz0 <- file(fnm_mgnl_haz0, "wb")
+    ## If doing G-computation, open binary file for writing o>
+    ## conditional hazards in treatment (1) and control (0) a>    
+    conn3 <- list(
+                  cnd_blh = file(fnm_cnd_blh, "wb"),
+                  mgnl_haz0 = file(fnm_mgnl_haz0, "wb"),
+                  mgnl_haz1 = file(fnm_mgnl_haz1, "wb")
+                 )
+
+    on.exit({
+      if (exists("conn3")) {
+        invisible(lapply(conn3, function(con) {
+          if (inherits(con, "connection")) {
+            try(close(con), silent = TRUE)
+          }
+        }))
+      }
+    }, add = TRUE)
 
     ## 2) ARRAY lhaz_bar_trt iter x max_grid(2000) marginal treat hazard(t)
     ## lhaz_bar_trt <- data.frame(matrix(NA, nrow = 0, ncol = max_grid))
@@ -1251,7 +1316,6 @@ GibbsMH_noborrow <- function(Y,
     w_sxn_trt <- rdirichlet(iter, rep(1, nx)) # iter draws s x n
     w_sxn_con <- rdirichlet(iter, rep(1, nx))
   }
-
 
   ### MCMC START ###
   sample <- c(rep("(Warmup)", warmup_iter), rep("(Sampling)", iter))
@@ -1330,7 +1394,7 @@ GibbsMH_noborrow <- function(Y,
 
       ## 1) ARRAY
       ## out_slam[j,] <- lambda_s
-      writeBin(lambda_s, conn_cnd_blh)
+      writeBin(lambda_s, conn3$cnd_blh)
 
       if(bp > 1 && !CntlOnly){
         #G-computation output for marginal hazard ratio
@@ -1343,7 +1407,7 @@ GibbsMH_noborrow <- function(Y,
                                           w_sxn_ts)
         ## 2) ARRAY
         ## lhaz_bar_trt[j,] <- lhaz_up_trt
-        writeBin(lhaz_up_trt, conn_mgnl_haz1)
+        writeBin(lhaz_up_trt, conn3$mgnl_haz1)
 
         w_sxn_cs <- w_sxn_trt[j,]
         beta_c <- beta[-1]
@@ -1354,7 +1418,7 @@ GibbsMH_noborrow <- function(Y,
                                           w_sxn_cs)
         ## 3) ARRAY
         ## lhaz_bar_con[j,] <- lhaz_up_con
-        writeBin(lhaz_up_con, conn_mgnl_haz0)
+        writeBin(lhaz_up_con, conn3$mgnl_haz0)
       }
 
       j <- j + 1
@@ -1362,20 +1426,33 @@ GibbsMH_noborrow <- function(Y,
 
   }
 
-  if (bp > 1 && !CntlOnly){
-      close(conn_mgnl_haz0)
-      close(conn_mgnl_haz1)
-      ## out_list[["lhaz_bar_trt"]] <- lhaz_bar_trt
-      ## out_list[["lhaz_bar_con"]] <- lhaz_bar_con
-  }
-  close(conn_cnd_blh)
 
+  ## Close binary files
+  lapply(conn3, close)
+      ##   out_list[["lhaz_bar_trt"]] <- lhaz_bar_trt
+      ##   out_list[["lhaz_bar_con"]] <- lhaz_bar_con
+
+  ### END MCMC/MH loop
+
+  conn3 <- list()
   ## Begin summary statistic block
   ## open binary files for reading
-  if(file.exists(fnm_cnd_blh)) conn_cnd_bhl <- file(fnm_cnd_blh, "rb")
+  if(bp <= 1 || CntlOnly)
+    if(file.exists(fnm_cnd_blh)) 
+      conn3$cnd_blh <- file(fnm_cnd_blh, "rb")
+
   if(bp > 1 && !CntlOnly){
-      if(file.exists(fnm_mgnl_haz1)) conn_mgnl_haz1 <- file(fnm_mgnl_haz1, "rb")
-      if(file.exists(fnm_mgnl_haz0)) conn_mgnl_haz0 <- file(fnm_mgnl_haz0, "rb")
+      all_files <- file.exists(fnm_mgnl_haz0) &&
+                   file.exists(fnm_mgnl_haz1) &&
+                   file.exists(fnm_cnd_blh)
+      if(all_files) 
+      {
+	  conn3 <- list(
+                         cnd_blh = file(fnm_cnd_blh, "rb"),
+                         mgnl_haz0 = file(fnm_mgnl_haz0, "rb"),
+                         mgnl_haz1 = file(fnm_mgnl_haz1, "rb")
+	               )
+      }
   }
 
   ## find TOS at 25%, 50%, 75% information time
@@ -1397,7 +1474,7 @@ GibbsMH_noborrow <- function(Y,
   ## 1st line: cumsum over time grid per row
   ## 2nd line: mean over iterations, per column
   ## 3rd line: ci over iterations, per column
-  cnd_haz_0 <- matrix(readBin(conn_cnd_blh, what="double", n=max_grid*iter), max_grid, iter)*stdz
+  cnd_haz_0 <- matrix(readBin(conn3$cnd_blh, what="double", n=max_grid*iter), max_grid, iter)*stdz
   med_cnd_haz_0 <- apply(cnd_haz_0, 1, FUN=median)
   CI_cnd_haz_0 <- t(apply(cnd_haz_0, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))
 
@@ -1444,8 +1521,8 @@ GibbsMH_noborrow <- function(Y,
   ## put them in MTE_dens_dfs
   if(bp > 1 && !CntlOnly)
   {
-      log_mgnl_haz_0 <- matrix(readBin(conn_mgnl_haz0, what = "double", n = max_grid * iter), max_grid, iter) * stdz
-      log_mgnl_haz_1 <- matrix(readBin(conn_mgnl_haz1, what = "double", n = max_grid * iter), max_grid, iter) * stdz
+      log_mgnl_haz_0 <- matrix(readBin(conn3$mgnl_haz0, what = "double", n = max_grid * iter), max_grid, iter) * stdz
+      log_mgnl_haz_1 <- matrix(readBin(conn3$mgnl_haz1, what = "double", n = max_grid * iter), max_grid, iter) * stdz
 
       ## marginal hazard from logged marginal hazard per sample
       mgnl_haz_0 <- exp(log_mgnl_haz_0)
@@ -1503,11 +1580,8 @@ GibbsMH_noborrow <- function(Y,
   }
 
   ## Close binary files
-  if(bp > 1 && !CntlOnly){
-      close(conn_mgnl_haz1)
-      close(conn_mgnl_haz0)
-  }
-  close(conn_cnd_bhl)
+      ## taken care of by handler at first
+      ## open for writing
 
   ## output QC
 
@@ -3861,31 +3935,40 @@ function(obj)
   cll <- obj$call
   iter <- ifelse(!is.null(cll$iter), cll$iter, fmls$iter)
   max_grid <- ifelse(!is.null(cll$max_grid), cll$max_grid, fmls$max_grid)
-
+  CntlOnly <- ifelse(!is.null(cll$CntlOnly), cll$CntlOnly, fmls$CntlOnly)
+  bp <- ifelse(!is.null(obj$formula), attr(terms(obj$formula), "term.labels"), grep("X_", names(obj$data)))
   stdz <- obj$stdz
 
   fnm_cnd_blh <- obj$fnms[1]
   fnm_mgnl_haz0 <- obj$fnms[2]
   fnm_mgnl_haz1 <- obj$fnms[3]
 
-  if (file.exists(fnm_cnd_blh))
-  {
-    conn_cnd_blh <- file(fnm_cnd_blh, "rb")
-    cnd_haz_0 <- matrix(readBin(conn_cnd_blh, what = "double", n = max_grid * iter), max_grid, iter) * stdz
-    close(conn_cnd_blh)
+  conn3 <- list()
+  if(bp <= 1 || CntlOnly)
+    if(file.exists(fnm_cnd_blh))
+    {
+      conn3$cnd_blh <- file(fnm_cnd_blh, "rb")
+      cnd_haz_0 <- matrix(readBin(conn3$cnd_blh, what = "double", n = max_grid * iter), max_grid, iter) * stdz
+    }
+
+  if(bp > 1 && !CntlOnly){
+      all_files <- file.exists(fnm_mgnl_haz0) &&
+                   file.exists(fnm_mgnl_haz1) &&
+                   file.exists(fnm_cnd_blh)
+      if(all_files)
+      {
+          conn3 <- list(
+                         cnd_blh = file(fnm_cnd_blh, "rb"),
+                         mgnl_haz0 = file(fnm_mgnl_haz0, "rb"),
+                         mgnl_haz1 = file(fnm_mgnl_haz1, "rb")
+                       )
+          cnd_haz_0 <- matrix(readBin(conn3$cnd_blh, what = "double", n = max_grid * iter), max_grid, iter) * stdz
+          mgnl_haz_0 <- matrix(readBin(conn3$mgnl_haz0, what = "double", n = max_grid * iter), max_grid, iter) * stdz
+          mgnl_haz_1 <- matrix(readBin(conn3$mgnl_haz1, what = "double", n = max_grid * iter), max_grid, iter) * stdz
+      }
   }
-  if (file.exists(fnm_mgnl_haz0))
-  {
-    conn_mgnl_haz0 <- file(fnm_mgnl_haz0, "rb")
-    mgnl_haz_0 <- matrix(readBin(conn_mgnl_haz0, what = "double", n = max_grid * iter), max_grid, iter) * stdz
-    close(conn_mgnl_haz0)
-  }
-  if (file.exists(fnm_mgnl_haz1))
-  {
-    conn_mgnl_haz1 <- file(fnm_mgnl_haz1, "rb")
-    mgnl_haz_1 <- matrix(readBin(conn_mgnl_haz1, what = "double", n = max_grid * iter), max_grid, iter) * stdz
-    close(conn_mgnl_haz1)
-  }
+  lapply(conn3, close)
+
   list(cnd_haz_0=cnd_haz_0, mgnl_haz_0=mgnl_haz_0, mgnl_haz_1=mgnl_haz_1)
 }
 
