@@ -1,0 +1,577 @@
+@article{oncology,
+author = {Su, Liwen and Chen, Xin and Zhang, Jingyi and Yan, Fangrong},
+title = {Comparative Study of Bayesian Information Borrowing Methods in Oncology Clinical Trials},
+journal = {JCO Precision Oncology},
+volume = {6},
+number = {6},
+pages = {e2100394},
+year = {2022},
+doi = {10.1200/PO.21.00394},
+note ={PMID: 35263169},
+URL = {https://doi.org/10.1200/PO.21.00394}
+}
+
+@article{cardiovascular,
+  title     = "A Practical Bayesian Adaptive Design Incorporating Data from Historical Controls",
+  author    = "Psioda, Matthew A and Soukup, Mat and Ibrahim, Joseph G",
+  journal   = "Stat. Med.",
+  publisher = "Wiley",
+  volume    =  37,
+  number    =  27,
+  pages     = "4054--4070",
+  month     =  nov,
+  year      =  2018,
+  keywords  = "Bayesian design; adaptive design; clinical trial design;
+               historical control; power prior",
+  copyright = "http://onlinelibrary.wiley.com/termsAndConditions\#vor",
+  language  = "en"
+}
+
+@article{rbest,
+    title = {Applying Meta-Analytic-Predictive Priors with the {R}
+      {B}ayesian Evidence Synthesis Tools},
+    author = {Sebastian Weber and Yue Li and John W. Seaman and
+      Tomoyuki Kakizume and Heinz Schmidli},
+    journal = {Journal of Statistical Software},
+    year = {2021},
+    volume = {100},
+    number = {19},
+    pages = {1--32},
+    doi = {10.18637/jss.v100.i19}
+  }
+
+@manual{psborrow,
+    title = {psborrow2: An R Package for Bayesian Dynamic Borrowing Simulation Study and
+Analysis},
+    author = {Isaac Gravestock},
+    year = {2023},
+    note = {R package version 0.0.2.0}
+  }
+
+@manual{R,
+    title = {R: A Language and Environment for Statistical Computing},
+    author = {{R Core Team}},
+    organization = {R Foundation for Statistical Computing},
+    address = {Vienna, Austria},
+    year = {2021},
+    url = {https://www.R-project.org/}
+  }
+
+@article{lewis,
+author = {Connor Jo Lewis, Somnath Sarkar, Jiawen Zhu and Bradley P. Carlin},
+title = {Borrowing from historical Control Data in Cancer Drug Development: A Cautionary Tale and Practical Guidelines},
+journal = {Statistics in Biopharmaceutical Research},
+volume = {11},
+number = {1},
+pages = {67-78},
+year = {2019},
+publisher = {Taylor & Francis},
+doi = {10.1080/19466315.2018.1497533},
+note ={PMID: 31435458},
+URL = { https://doi.org/10.1080/19466315.2018.1497533}
+}
+
+@article{Smith2020,
+   abstract = {Leveraging historical data into the design and analysis of phase 2 randomized controlled trials can improve efficiency of drug development programs. Such approaches can reduce sample size without loss of power. Potential issues arise when the current control arm is inconsistent with historical data, which may lead to biased estimates of treatment efficacy, loss of power, or inflated type 1 error. Consideration as to how to borrow historical information is important, and in particular, adjustment for prognostic factors should be considered. This paper will illustrate two motivating case studies of oncology Bayesian augmented control (BAC) trials.},
+   author = {Claire L. Smith and Zachary Thomas and Nathan Enas and Katharine Thorn and Michael Lahn and Karim Benhadji and Ann Cleverly},
+   doi = {10.1002/pst.1990},
+   issn = {15391612},
+   issue = {3},
+   journal = {Pharmaceutical Statistics},
+   keywords = {Bayesian,borrowing,covariates,historical data},
+   month = {5},
+   pages = {276-290},
+   pmid = {31903699},
+   publisher = {John Wiley and Sons Ltd},
+   title = {Leveraging Historical Data into Oncology Development Programs: Two Case Studies of Phase 2 Bayesian Augmented Control Trial Designs},
+   volume = {19},
+   year = {2020},
+}
+
+@article{Bi2023,
+   abstract = {As the roles of historical trials and real-world evidence in drug development have substantially increased, several approaches have been proposed to leverage external data and improve the design of clinical trials. While most of these approaches focus on methodology development for borrowing information during the analysis stage, there is a risk of inadequate or absent enrollment of concurrent control due to misspecification of heterogeneity from external data, which can result in unreliable estimates of treatment effect. In this study, we introduce a Bayesian hybrid design with flexible sample size adaptation (BEATS) that allows for adaptive borrowing of external data based on the level of heterogeneity to augment the control arm during both the design and interim analysis stages. Moreover, BEATS extends the Bayesian semiparametric meta-analytic predictive prior (BaSe-MAP) to incorporate time-to-event endpoints, enabling optimal borrowing performance. Initially, BEATS calibrates the expected sample size and initial randomization ratio based on heterogeneity among the external data. During the interim analysis, flexible sample size adaptation is performed to address conflicts between the concurrent and historical control, while also conducting futility analysis. At the final analysis, estimation is provided by incorporating the calibrated amount of external data. Therefore, our proposed design allows for an approximation of an ideal randomized controlled trial with an equal randomization ratio while controlling the size of the concurrent control to benefit patients and accelerate drug development. BEATS also offers optimal power and robust estimation through flexible sample size adaptation when conflicts arise between the concurrent control and external data.},
+   author = {Dehua Bi and Meizi Liu and Jianchang Lin and Rachael Liu},
+   doi = {10.1002/sim.9936},
+   issn = {10970258},
+   journal = {Statistics in Medicine},
+   keywords = {Bayesian borrowing,historical control,hybrid design,real-world data,sample size rebalance,semi-parametric meta-analytic-predictive prior},
+   publisher = {John Wiley and Sons Ltd},
+   title = {BEATS: Bayesian Hybrid Design with Flexible Sample Size Adaptation for Time-to-Event Endpoints},
+   year = {2023},
+}
+
+@article{Roychoudhury2020,
+   abstract = {The recent 21st Century Cures Act propagates innovations to accelerate the discovery, development, and delivery of 21st century cures. It includes the broader application of Bayesian statistics and the use of evidence from clinical expertise. An example of the latter is the use of trial-external (or historical) data, which promises more efficient or ethical trial designs. We propose a Bayesian meta-analytic approach to leverage historical data for time-to-event endpoints, which are common in oncology and cardiovascular diseases. The approach is based on a robust hierarchical model for piecewise exponential data. It allows for various degrees of between trial-heterogeneity and for leveraging individual as well as aggregate data. An ovarian carcinoma trial and a non-small cell cancer trial illustrate methodological and practical aspects of leveraging historical data for the analysis and design of time-to-event trials.},
+   author = {Satrajit Roychoudhury and Beat Neuenschwander},
+   doi = {10.1002/sim.8456},
+   issn = {10970258},
+   issue = {7},
+   journal = {Statistics in Medicine},
+   keywords = {Historical data,hierarchical model,meta-analysis,piecewise exponential model,prior distribution,time-to-event data},
+   month = {3},
+   pages = {984-995},
+   pmid = {31985077},
+   publisher = {John Wiley and Sons Ltd},
+   title = {Bayesian Leveraging of Historical Control Data for a Clinical Trial with Time-to-Event Endpoint},
+   volume = {39},
+   year = {2020},
+}
+
+@article{Han2017,
+   abstract = {The borrowing of historical control data can be an efficient way to improve the treatment effect estimate of the current control group in a randomized clinical trial. When the historical and current control data are consistent, the borrowing of historical data can increase power and reduce Type I error rate. However, when these 2 sources of data are inconsistent, it may result in a combination of biased estimates, reduced power, and inflation of Type I error rate. In some situations, inconsistency between historical and current control data may be caused by a systematic variation in the measured baseline prognostic factors, which can be appropriately addressed through statistical modeling. In this paper, we propose a Bayesian hierarchical model that can incorporate patient-level baseline covariates to enhance the appropriateness of the exchangeability assumption between current and historical control data. The performance of the proposed method is shown through simulation studies, and its application to a clinical trial design for amyotrophic lateral sclerosis is described. The proposed method is developed for scenarios involving multiple imbalanced prognostic factors and thus has meaningful implications for clinical trials evaluating new treatments for heterogeneous diseases such as amyotrophic lateral sclerosis.},
+   author = {Baoguang Han and Jia Zhan and Z. John Zhong and Dawei Liu and Stacy Lindborg},
+   doi = {10.1002/pst.1815},
+   issn = {15391612},
+   issue = {4},
+   journal = {Pharmaceutical Statistics},
+   keywords = {ALS,Bayesian methods,covariate,hierarchical model,historical control},
+   month = {7},
+   pages = {296-308},
+   pmid = {28560815},
+   publisher = {John Wiley and Sons Ltd},
+   title = {Covariate-Adjusted Borrowing of Historical Control Data in Randomized Clinical Trials},
+   volume = {16},
+   year = {2017},
+}
+
+@article{hobbs,
+author = {Brian P Hobbs and Bradley P Carlin and Daniel J Sargent},
+title ={Adaptive Adjustment of the Randomization Ratio Using Historical Control Data},
+journal = {Clinical Trials},
+volume = {10},
+number = {3},
+pages = {430-440},
+year = {2013},
+doi = {10.1177/1740774513483934},
+note ={PMID: 23690095},
+URL = {https://doi.org/10.1177/1740774513483934},
+eprint = {https://doi.org/10.1177/1740774513483934}
+}
+
+@article{green,
+ ISSN = {00063444},
+ URL = {http://www.jstor.org/stable/2337340},
+ abstract = {Markov chain Monte Carlo methods for Bayesian computation have until recently been restricted to problems where the joint distribution of all variables has a density with respect to some fixed standard underlying measure. They have therefore not been available for application to Bayesian model determination, where the dimensionality of the parameter vector is typically not fixed. This paper proposes a new framework for the construction of reversible Markov chain samplers that jump between parameter subspaces of differing dimensionality, which is flexible and entirely constructive. It should therefore have wide applicability in model determination problems. The methodology is illustrated with applications to multiple change-point analysis in one and two dimensions, and to a Bayesian comparison of binomial experiments.},
+ author = {Peter J. Green},
+ journal = {Biometrika},
+ number = {4},
+ pages = {711--732},
+ publisher = {[Oxford University Press, Biometrika Trust]},
+ title = {Reversible Jump Markov Chain Monte Carlo Computation and Bayesian Model Determination},
+ urldate = {2023-12-11},
+ volume = {82},
+ year = {1995}
+}
+
+@article{pocock,
+title = {The Combination of Randomized and Historical Controls in Clinical Trials},
+journal = {Journal of Chronic Diseases},
+volume = {29},
+number = {3},
+pages = {175-188},
+year = {1976},
+issn = {0021-9681},
+doi = {https://doi.org/10.1016/0021-9681(76)90044-8},
+url = {https://www.sciencedirect.com/science/article/pii/0021968176900448},
+author = {Stuart J. Pocock},
+abstract = {In many clinical trials the objective is to compare a new treatment with a standard control treatment, the design being to randomize equal numbers of patients onto the two treatments. However, there often exist acceptable historical data on the control treatment and this paper describes procedures for incorporating such historical controls into both the design and analysis of a randomized trial. The statistical model supposes that treatment evaluation consists of a single quantitative measure for each patient and the objective of the trial is to estimate the true difference in treatment means for this measure. In general, historical controls cannot be considered as reliable as randomized controls and this leads one to expect some bias in the historical data. This bias cannot be determined, even as regards its direction, and in the statistical model it is defined as a random variable with zero mean and variance to be specified. In practice, one might choose several values for this variance to represent varying degrees of mistrust, i.e. potential bias, in the historical data. As regards analysis, the best estimate of the control treatment mean is a weighted average of the means for the randomized and historical controls. This leads to a more accurate comparison with the new treatment than the use of randomized controls alone. In the design of a randomized trial the presence of historical data enables one to enter a reduced proportion of patients into a randomized control group, the precise amount of this reduction depending on the size of the historical data and also its potential bias. Examples from actual sequences of clinical trials run by the Eastern Co-operative Oncology Group illustrate the practical use of the methods. In conclusion, it is current practice in clinical trials to rely exclusively on either randomized controls or historical controls, but not both. The methods described in this paper provide an objective, quantitative approach for the combination of these two sources of control data and this should lead to a more efficient use of patients in the execution of clinical trials.}
+}
+
+@ARTICLE{gibbs,
+  author={Geman, Stuart and Geman, Donald},
+  journal={IEEE Transactions on Pattern Analysis and Machine Intelligence}, 
+  title={Stochastic Relaxation, Gibbs Distributions, and the Bayesian Restoration of Images}, 
+  year={1984},
+  volume={PAMI-6},
+  number={6},
+  pages={721-741},
+  doi={10.1109/TPAMI.1984.4767596}}
+
+@article{MH,
+    author = {Hastings, W. K.},
+    title = {Monte Carlo Sampling Methods Using Markov Chains and Their Applications},
+    journal = {Biometrika},
+    volume = {57},
+    number = {1},
+    pages = {97-109},
+    year = {1970},
+    month = {04},
+    abstract = "{A generalization of the sampling method introduced by Metropolis et al. (1953) is presented along with an exposition of the relevant theory, techniques of application and methods and difficulties of assessing the error in Monte Carlo estimates. Examples of the methods, including the generation of random orthogonal matrices and potential applications of the methods to numerical problems arising in statistics, are discussed.}",
+    issn = {0006-3444},
+    doi = {10.1093/biomet/57.1.97},
+    url = {https://doi.org/10.1093/biomet/57.1.97},
+    eprint = {https://academic.oup.com/biomet/article-pdf/57/1/97/23940249/57-1-97.pdf},
+}
+
+@Manual{condsurv,
+    title = {condSURV: Estimation of the Conditional Survival Function for Ordered
+Multivariate Failure Time Data},
+    author = {Luis Meira-Machado and Marta Sestelo},
+    year = {2023},
+    note = {R package version 2.0.4},
+    url = {https://CRAN.R-project.org/package=condSURV},
+  }
+
+@article{gbsg_data,
+ ISSN = {09641998, 1467985X},
+ URL = {http://www.jstor.org/stable/2680468},
+ author = {W. Sauerbrei and P. Royston},
+ journal = {Journal of the Royal Statistical Society. Series A (Statistics in Society)},
+ number = {1},
+ pages = {71--94},
+ publisher = {[Wiley, Royal Statistical Society]},
+ title = {Building Multivariable Prognostic and Diagnostic Models: Transformation of the Predictors by Using Fractional Polynomials},
+ urldate = {2023-12-11},
+ volume = {162},
+ year = {1999}
+}
+
+@ARTICLE{MALA,
+  title     = "Optimal Scaling of Discrete Approximations to Langevin
+               Diffusions",
+  author    = "Roberts, Gareth O and Rosenthal, Jeffrey S",
+  abstract  = "Summary We consider the optimal scaling problem for proposal
+               distributions in Hastings-Metropolis algorithms derived from
+               Langevin diffusions. We prove an asymptotic diffusion limit
+               theorem and show that the relative efficiency of the algorithm
+               can be characterized by its overall acceptance rate,
+               independently of the target distribution. The asymptotically
+               optimal acceptance rate is 0.574. We show that, as a function of
+               dimension n, the complexity of the algorithm is O(n1/3), which
+               compares favourably with the O(n) complexity of random walk
+               Metropolis algorithms. We illustrate this comparison with some
+               example simulations.",
+  journal   = "J. R. Stat. Soc. Series B Stat. Methodol.",
+  publisher = "Oxford University Press (OUP)",
+  volume    =  60,
+  number    =  1,
+  pages     = "255--268",
+  month     =  jan,
+  year      =  1998,
+  copyright = "https://academic.oup.com/journals/pages/open\_access/funder\_policies/chorus/standard\_publication\_model",
+  language  = "en"
+}
+
+@article{MALAog,
+     author = {Roberts, G. O. and Gelman, A. and Gilks, W. R.},
+     title = {Weak Convergence and Optimal Scaling of Random Walk Metropolis Algorithms},
+     journal = {Ann. Appl. Probab.},
+     volume = {7},
+     number = {1},
+     year = {1997},
+     pages = { 110-120},
+     language = {en},
+     url = {http://dml.mathdoc.fr/item/1034625254}
+}
+
+@article{Scott2024,
+     author={Darren A. V. Scott and Alex Lewin},
+     title={Borrowing from Historical Control Data in a Bayesian Time-to-Event Model with Flexible Baseline Hazard Function}, 
+     journal = {Biostatistics},
+     volume = {27},
+     number = {1},
+     year = {2026},
+     pages = { 1-19},
+     language = {en},
+     url = {https://doi.org/10.1093/biostatistics/kxag006}
+}
+
+@Manual{BayesFBHborrow,
+    title = {BayesFBHborrow: Bayesian Dynamic Borrowing with Flexible Baseline Hazard
+Function},
+    author = {Darren Scott and Sophia Axillus},
+    year = {2024},
+    note = {R package version 2.0.1},
+    url = {https://CRAN.R-project.org/package=BayesFBHborrow},
+  }
+
+@article{Neuenschwander2016,
+   abstract = {Clinical trials with multiple strata are increasingly used in drug development. They may sometimes be the only option to study a new treatment, for example in small populations and rare diseases. In early phase trials, where data are often sparse, good statistical inference and subsequent decision-making can be challenging. Inferences from simple pooling or stratification are known to be inferior to hierarchical modeling methods, which build on exchangeable strata parameters and allow borrowing information across strata. However, the standard exchangeability (EX) assumption bears the risk of too much shrinkage and excessive borrowing for extreme strata. We propose the exchangeability-nonexchangeability (EXNEX) approach as a robust mixture extension of the standard EX approach. It allows each stratum-specific parameter to be exchangeable with other similar strata parameters or nonexchangeable with any of them. While EXNEX computations can be performed easily with standard Bayesian software, model specifications and prior distributions are more demanding and require a good understanding of the context. Two case studies from phases I and II (with three and four strata) show promising results for EXNEX. Data scenarios reveal tempered degrees of borrowing for extreme strata, and frequentist operating characteristics perform well for estimation (bias, mean-squared error) and testing (less type-I error inflation).},
+   author = {Beat Neuenschwander and Simon Wandel and Satrajit Roychoudhury and Stuart Bailey},
+   doi = {10.1002/pst.1730},
+   issn = {15391612},
+   issue = {2},
+   journal = {Pharmaceutical Statistics},
+   keywords = {Bayesian,between-strata heterogeneity,exchangeability-nonexchangeability,hierarchical model,pooling,shrinkage,stratification},
+   month = {3},
+   pages = {123-134},
+   pmid = {26685103},
+   publisher = {John Wiley and Sons Ltd},
+   title = {Robust exchangeability designs for early phase clinical trials with multiple strata},
+   volume = {15},
+   year = {2016},
+}
+
+
+@article{Escobar1995,
+   abstract = {We describe and illustrate Bayesian inference in models for density estimation using mixtures of Dirichlet processes. These models provide natural settings for density estimation and are exemplified by special cases where data are modeled as a sample from mixtures of normal distributions. Efficient simulation methods are used to approximate various prior, posterior, and predictive distributions. This allows for direct inference on a variety of practical issues, including problems of local versus global smoothing, uncertainty about density estimates, assessment of modality, and the inference on the numbers of components. Also, convergence results are established for a general class of normal mixture models. },
+   author = {Michael D. Escobar and Mike West},
+   doi = {10.1080/01621459.1995.10476550},
+   issn = {1537274X},
+   issue = {430},
+   journal = {Journal of the American Statistical Association},
+   keywords = {Kernel estimation,Mixtures of Dirichlet processes,Multimodality,Normal mixtures,Posterior sampling,Smoothing parameter estimation},
+   pages = {577-588},
+   title = {Bayesian density estimation and inference using mixtures},
+   volume = {90},
+   year = {1995},
+}
+@article{Hupf2021,
+   abstract = {When designing a clinical trial, borrowing historical control information can provide a more efficient approach by reducing the necessary control arm sample size while still yielding increased power. Several Bayesian methods for incorporating historical information via a prior distribution have been proposed, for example, (modified) power prior, (robust) meta-analytic predictive prior. When utilizing historical control borrowing, the prior parameter(s) must be specified to determine the magnitude of borrowing before the current data are observed. Thus, a flexible prior is needed in case of heterogeneity between historic trials or prior data conflict with the current trial. To incorporate the ability to selectively borrow historic information, we propose a Bayesian semiparametric meta-analytic-predictive prior. Using a Dirichlet process mixture prior allows for relaxation of parametric assumptions, and lets the model adaptively learn the relationship between the historic and current control data. Additionally, we generalize a method for estimating the prior effective sample size (ESS) for the proposed prior. This gives an intuitive quantification of the amount of information borrowed from historical trials, and aids in tuning the prior to the specific task at hand. We illustrate the effectiveness of the proposed methodology by comparing performance between existing methods in an extensive simulation study and a phase II proof-of-concept trial in ankylosing spondylitis. In summary, our proposed robustification of the meta-analytic-predictive prior alleviates the need for prespecifying the amount of borrowing, providing a more flexible and robust method to integrate historical data from multiple study sources in the design and analysis of clinical trials.},
+   author = {Bradley Hupf and Veronica Bunn and Jianchang Lin and Cheng Dong},
+   doi = {10.1002/sim.8970},
+   issn = {10970258},
+   issue = {14},
+   journal = {Statistics in Medicine},
+   keywords = {Bayesian semiparametric,Dirichlet process,borrowing,hierarchical model,historical data,meta-analytic-predictive prior},
+   pages = {3385-3399},
+   pmid = {33851441},
+   title = {Bayesian semiparametric meta-analytic-predictive prior for historical control borrowing in clinical trials},
+   volume = {40},
+   year = {2021},
+}
+
+@article{Hupf2024,
+   abstract = {Utilization of historical data is increasingly common for gaining efficiency in the drug development and decision-making processes. The underlying issue of between-trial heterogeneity in clinical trials is a barrier in making these methods standard practice in the pharmaceutical industry. Common methods for historical borrowing discount the borrowed information based on the similarity between outcomes in the historical and current data. However, individual clinical trials and their outcomes are intrinsically heterogenous due to differences in study design, patient characteristics, and changes in standard of care. Additionally, differences in covariate distributions can produce inconsistencies in clinical outcome data between historical and current data when there may be a consistent covariate effect. In such scenario, borrowing historical data is still advantageous even though the population level outcome summaries are different. In this paper, we propose a covariate adjusted meta-analytic-predictive (CA-MAP) prior for historical control borrowing. A MAP prior is assigned to each covariate effect, allowing the amount of borrowing to be determined by the consistency of the covariate effects across the current and historical data. This approach integrates between-trial heterogeneity with covariate level heterogeneity to tune the amount of information borrowed. Our method is unique as it directly models the covariate effects instead of using the covariates to select a similar population to borrow from. In summary, our proposed patient-level extension of the MAP prior allows for the amount of historical control borrowing to depend on the similarity of covariate effects rather than similarity in clinical outcomes.},
+   author = {Bradley Hupf and Yunlong Yang and Ryan Gryder and Veronica Bunn and Jianchang Lin},
+   doi = {10.1080/10543406.2024.2330206},
+   issn = {15205711},
+   journal = {Journal of Biopharmaceutical Statistics},
+   keywords = {Covariate adjusted,historical data borrowing,meta-analytic-predictive,patient level data},
+   month = {4},
+   publisher = {Taylor and Francis Ltd.},
+   title = {Covariate adjusted meta-analytic predictive (CA-MAP) prior for historical borrowing using patient-level data},
+   year = {2024}
+}
+@article{Chen2023,
+   abstract = {In recent decades, there has been growing interest in leveraging external data information for clinical development as it improves the efficiency of the design and inference of clinical trials when utilized properly and more importantly, alleviates potential ethical and recruitment challenges. When it is of interest to augment the concurrent study's control arm using external control data, the potential outcome heterogeneity across data sources, also known as prior-data conflict, should be accounted for. In addition, in the outcome modeling, inclusion of prognostic covariates that may have impact on the outcome can avoid efficiency loss or potential bias. In this paper, we propose a Bayesian hierarchical modeling strategy incorporating covariate-adjusted meta-analytic predictive approach (cMAP) and also introduce a propensity score (PS) based sequential procedure that integrates the cMAP. In the simulation study, the proposed methods are found to have advantages in the estimation, power, and type I error control over the standard methods such as PS matching alone and hierarchical modeling that ignores the covariates. An illustrative example is used to illustrate the procedure.},
+   author = {Xiaotian Chen and Yi Yao and Li Wang and Saurabh Mukhopadhyay},
+   doi = {10.1016/j.cct.2023.107301},
+   issn = {15592030},
+   journal = {Contemporary Clinical Trials},
+   keywords = {Bayesian modeling,Covariates,Propensity score,Synthetic control,meta-analytic predictive approach},
+   month = {9},
+   pmid = {37467950},
+   publisher = {Elsevier Inc.},
+   title = {Leveraging external evidence using Bayesian hierarchical model and propensity score in the presence of covariates},
+   volume = {132},
+   year = {2023}
+}
+
+
+@article{Neuenschwander2020,
+   abstract = {Determining the sample size of an experiment can be challenging, even more so when incorporating external information via a prior distribution. Such information is increasingly used to reduce the size of the control group in randomized clinical trials. Knowing the amount of prior information, expressed as an equivalent prior effective sample size (ESS), clearly facilitates trial designs. Various methods to obtain a prior's ESS have been proposed recently. They have been justified by the fact that they give the standard ESS for one-parameter exponential families. However, despite being based on similar information-based metrics, they may lead to surprisingly different ESS for nonconjugate settings, which complicates many designs with prior information. We show that current methods fail a basic predictive consistency criterion, which requires the expected posterior-predictive ESS for a sample of size N to be the sum of the prior ESS and N. The expected local-information-ratio ESS is introduced and shown to be predictively consistent. It corrects the ESS of current methods, as shown for normally distributed data with a heavy-tailed Student-t prior and exponential data with a generalized Gamma prior. Finally, two applications are discussed: the prior ESS for the control group derived from historical data and the posterior ESS for hierarchical subgroup analyses.},
+   author = {Beat Neuenschwander and Sebastian Weber and Heinz Schmidli and Anthony O'Hagan},
+   doi = {10.1111/biom.13252},
+   issn = {15410420},
+   issue = {2},
+   journal = {Biometrics},
+   keywords = {Fisher information,co-data,historical data,meta-analytic-predictive prior distribution,prior predictive distribution},
+   month = {6},
+   pages = {578-587},
+   pmid = {32142163},
+   publisher = {John Wiley and Sons Inc},
+   title = {Predictively consistent prior effective sample sizes},
+   volume = {76},
+   year = {2020},
+}
+
+@article{Willard2024,
+   abstract = {In conventional randomized controlled trials, adjustment for baseline values of covariates known to be at least moderately associated with the outcome increases the power of the trial. Recent work has shown a particular benefit for more flexible frequentist designs, such as information adaptive and adaptive multi-arm designs. However, covariate adjustment has not been characterized within the more flexible Bayesian adaptive designs, despite their growing popularity. We focus on a subclass of these which allow for early stopping at an interim analysis given evidence of treatment superiority. We consider both collapsible and non-collapsible estimands and show how to obtain posterior samples of marginal estimands from adjusted analyses. We describe several estimands for three common outcome types. We perform a simulation study to assess the impact of covariate adjustment using a variety of adjustment models in several different scenarios. This is followed by a real-world application of the compared approaches to a COVID-19 trial with a binary endpoint. For all scenarios, it is shown that covariate adjustment increases power and the probability of stopping the trials early, and decreases the expected sample sizes as compared to unadjusted analyses.},
+   author = {James Willard and Shirin Golchi and Erica E.M. Moodie},
+   doi = {10.1177/09622802241227957},
+   issn = {14770334},
+   issue = {3},
+   journal = {Statistical Methods in Medical Research},
+   keywords = {Bayesian adaptive designs,clinical trials,covariate adjustment,power,stopping criteria},
+   month = {3},
+   pages = {480-497},
+   pmid = {38327082},
+   publisher = {SAGE Publications Ltd},
+   title = {Covariate adjustment in Bayesian adaptive randomized controlled trials},
+   volume = {33},
+   year = {2024},
+}
+
+@article{Keil2018,
+   abstract = {Epidemiologists often wish to estimate quantities that are easy to communicate and correspond to the results of realistic public health interventions. Methods from causal inference can answer these questions. We adopt the language of potential outcomes under Rubin’s original Bayesian framework and show that the parametric g-formula is easily amenable to a Bayesian approach. We show that the frequentist properties of the Bayesian g-formula suggest it improves the accuracy of estimates of causal effects in small samples or when data are sparse. We demonstrate an approach to estimate the effect of environmental tobacco smoke on body mass index among children aged 4–9 years who were enrolled in a longitudinal birth cohort in New York, USA. We provide an algorithm and supply SAS and Stan code that can be adopted to implement this computational approach more generally.},
+   author = {Alexander P. Keil and Eric J. Daza and Stephanie M. Engel and Jessie P. Buckley and Jessie K. Edwards},
+   doi = {10.1177/0962280217694665},
+   issn = {14770334},
+   issue = {10},
+   journal = {Statistical Methods in Medical Research},
+   keywords = {Bayesian,causal inference,g-computation,semiparametric},
+   month = {10},
+   pages = {3183-3204},
+   pmid = {29298607},
+   publisher = {SAGE Publications Ltd},
+   title = {A Bayesian approach to the g-formula},
+   volume = {27},
+   year = {2018},
+}
+
+@article{Rubin1981,
+   author = {Donald B. Rubin},
+   doi = {10.1214/aos/1176345338},
+   issn = {0090-5364},
+   issue = {1},
+   journal = {The Annals of Statistics},
+   month = {1},
+   title = {The Bayesian bootstrap},
+   volume = {9},
+   year = {1981}
+}
+
+@article{Stensrud2017,
+   abstract = {Counter-intuitive associations appear frequently in epidemiology, and these results are often debated. In particular, several scenarios are characterized by a general risk factor that appears protective in particular subpopulations, for example, individuals suffering from a specific disease. However, the associations are not necessarily representing causal effects. Selection bias due to conditioning on a collider may often be involved, and causal graphs are widely used to highlight such biases. These graphs, however, are qualitative, and they do not provide information on the real life relevance of a spurious association. Quantitative estimates of such associations can be obtained from simple statistical models. In this study, we present several paradoxical associations that occur in epidemiology, and we explore these associations in a causal, frailty framework. By using frailty models, we are able to put numbers on spurious effects that often are neglected in epidemiology. We discuss several counter-intuitive findings that have been reported in real life analyses, and we present calculations that may expand the understanding of these associations. In particular, we derive novel expressions to explain the magnitude of bias in index-event studies.},
+   author = {Mats Julius Stensrud and Morten Valberg and Kjetil Røysland and Odd O. Aalen},
+   doi = {10.1097/EDE.0000000000000621},
+   issn = {15315487},
+   issue = {3},
+   journal = {Epidemiology},
+   month = {5},
+   pages = {379-386},
+   pmid = {28244888},
+   publisher = {Lippincott Williams and Wilkins},
+   title = {Exploring selection bias by causal frailty models the magnitude matters},
+   volume = {28},
+   year = {2017}
+}
+@article{Hernn2010,
+   author = {Miguel A. Hernán},
+   doi = {10.1097/EDE.0b013e3181c1ea43},
+   issn = {10443983},
+   issue = {1},
+   journal = {Epidemiology},
+   month = {1},
+   pages = {13-15},
+   pmid = {20010207},
+   title = {The hazards of hazard ratios},
+   volume = {21},
+   year = {2010}
+}
+@article{Fay2024,
+   author = {Michael P Fay and Fan Li},
+   doi = {10.1177/17407745241243308},
+   issn = {1740-7745},
+   issue = {5},
+   journal = {Clinical Trials},
+   month = {10},
+   pages = {623-635},
+   title = {Causal interpretation of the hazard ratio in randomized clinical trials},
+   volume = {21},
+   url = {https://journals.sagepub.com/doi/10.1177/17407745241243308},
+   year = {2024}
+}
+
+@article{Daniel2021,
+   abstract = {We revisit the well-known but often misunderstood issue of (non)collapsibility of effect measures in regression models for binary and time-to-event outcomes. We describe an existing simple but largely ignored procedure for marginalizing estimates of conditional odds ratios and propose a similar procedure for marginalizing estimates of conditional hazard ratios (allowing for right censoring), demonstrating its performance in simulation studies and in a reanalysis of data from a small randomized trial in primary biliary cirrhosis patients. I},
+   author = {Rhian Daniel and Jingjing Zhang and Daniel Farewell},
+   doi = {10.1002/bimj.201900297},
+   issn = {15214036},
+   issue = {3},
+   journal = {Biometrical Journal},
+   keywords = {Cox proportional hazards regression,covariate adjustment,logistic regression,noncollapsibility},
+   month = {3},
+   pages = {528-557},
+   pmid = {33314251},
+   publisher = {John Wiley and Sons Inc},
+   title = {Making apples from oranges: Comparing noncollapsible effect estimators and their standard errors after adjustment for different covariate sets},
+   volume = {63},
+   year = {2021}
+}
+
+@techReport{FDA2026,
+   author = {FDA},
+   title = {Use of Bayesian methodology in clinical trials of drug and biological products},
+   year = {2026}
+}
+@article{Sjlander2016,
+   author = {Arvid Sjölander and Elisabeth Dahlqwist and Johan Zetterqvist},
+   doi = {10.1097/EDE.0000000000000433},
+   issn = {1044-3983},
+   issue = {3},
+   journal = {Epidemiology},
+   month = {5},
+   pages = {356-359},
+   title = {A Note on the Noncollapsibility of Rate Differences and Rate Ratios},
+   volume = {27},
+   year = {2016}
+}
+
+@article{Aalen2015,
+   author = {Odd O. Aalen and Richard J. Cook and Kjetil Røysland},
+   doi = {10.1007/s10985-015-9335-y},
+   issn = {1380-7870},
+   issue = {4},
+   journal = {Lifetime Data Analysis},
+   month = {10},
+   pages = {579-593},
+   title = {Does Cox analysis of a randomized survival study yield a causal treatment effect?},
+   volume = {21},
+   year = {2015}
+}
+
+@article{Spiegelhalter2002,
+   abstract = {We consider the problem of comparing complex hierarchical models in which the number of parameters is not clearly defined. Using an information theoretic argument we derive a measure p D for the effective number of parameters in a model as the difference between the posterior mean of the deviance and the deviance at the posterior means of the parameters of interest. In general p D approximately corresponds to the trace of the product of Fisher's information and the posterior covariance, which in normal models is the trace of the 'hat' matrix projecting observations onto fitted values. Its properties in exponential families are explored. The posterior mean deviance is suggested as a Bayesian measure of fit or adequacy, and the contributions of individual observations to the fit and complexity can give rise to a diagnostic plot of deviance residuals against leverages. Adding p D to the posterior mean deviance gives a deviance information criterion for comparing models, which is related to other information criteria and has an approximate decision theoretic justification. The procedure is illustrated in some examples, and comparisons are drawn with alternative Bayesian and classical proposals. Throughout it is emphasized that the quantities required are trivial to compute in a Markov chain Monte Carlo analysis.},
+   author = {David J Spiegelhalter and Nicola G Best and Bradley P Carlin and Angelika Van Der Linde},
+   journal = {J. R. Statist. Soc. B},
+   keywords = {Bayesian model comparison,Decision theory,Deviance information criterion,Effective number of parameters,Hierarchical models,Information theory,Leverage,Markov chain Monte Carlo methods,Model dimension},
+   pages = {583-639},
+   title = {Bayesian measures of model complexity and fit},
+   volume = {64},
+   url = {https://doi.org/10.1111/1467-9868.00353},
+   year = {2002}
+}
+
+@article{Robins1986,
+   author = {James Robins},
+   doi = {10.1016/0270-0255(86)90088-6},
+   issn = {02700255},
+   issue = {9-12},
+   journal = {Mathematical Modelling},
+   pages = {1393-1512},
+   title = {A new approach to causal inference in mortality studies with a sustained exposure period—application to control of the healthy worker survivor effect},
+   volume = {7},
+   year = {1986}
+}
+
+@article{Besag1995,
+   abstract = {Gaussian conditional autoregressions have been widely used in spatial statistics and Bayesian image analysis, where they are intended to describe interactions between random variables at fixed sites in Euclidean space. The main appeal of these distributions is in the Markovian interpretation of their full conditionals. Intrinsic autoregressions are limiting forms that retain the Markov property. Despite being improper, they can have advantages over the standard autoregressions, both conceptually and in practice. For example, they often avoid difficulties in parameter estimation, without apparent loss, or exhibit appealing invariances, as in texture analysis. However, on small arrays and in nonlattice applications, both forms of autoregression can lead to undesirable second-order characteristics, either in the variables themselves or in contrasts among them. This paper discusses standard and intrinsic autoregressions and describes how the problems that arise can be alleviated using Dempster's (1972) algorithm or an appropriate modification. The approach represents a partial synthesis of standard geostatistical and Gaussian Markov random field formulations. Some nonspatial applications are also mentioned.},
+   author = {Julian Besag and Charles Kooperberg},
+   isbn = {201401:54:06},
+   issue = {4},
+   journal = {Biometrika},
+   keywords = {Bayesian image analysis,Conditional autoregression,Dempster's algorithm,Geographical epidemiology,Geostatistics,Intrinsic autoregression,Multi-way table,Prior distribution,Some key words: Agricultural experiments,Spatial statistics,Surface reconstruction,Texture analysis},
+   pages = {733-779},
+   title = {On conditional and intrinsic autoregressions},
+   volume = {82},
+   year = {1995},
+}
+
+@article{Gogtay2021,
+   abstract = {Randomized controlled trials are the gold standard for determining the efficacy of a new intervention. Trials conducted for regulatory approval of an intervention compare the effect of the intervention with the standard of care or placebo to demonstrate efficacy. Randomization attempts to ensure that all known and unknown confounding factors are evenly distributed between the groups, and that the groups will be comparable at the end of the study, so that any inter-group differences in outcomes can be attributed to the intervention. However, in reality, intercurrent events may impact the assessment and subsequent interpretation of the outcome of interest. To address this, International Council for Harmonisation of Technical Requirements for Pharmaceuticals for Human Use (ICH) in 2017, released an addendum to the E9 guideline (ICH E9 R1) putting forth the concept of Estimands and Sensitivity Analysis in Clinical Trials. This addendum addresses how these intercurrent events are to be handled using the Estimand concept, which is now expected to be detailed in a separate section of the study protocol. In this paper, we discuss what estimands are, and their likely impact on how regulatory trial protocols and their statistical analyses plans are written and implemented. We also look at the application of the concept of estimands to routine clinical practice.},
+   author = {Nithya Jaideep Gogtay and Priya Ranganathan and Rakesh Aggarwal},
+   doi = {10.4103/picr.picr_384_20},
+   issn = {22295488},
+   issue = {2},
+   journal = {Perspectives in Clinical Research},
+   keywords = {Clinical trials,drug development,estimand,hypothetical,regulatory},
+   month = {4},
+   pages = {106-112},
+   publisher = {Wolters Kluwer Medknow Publications},
+   title = {Understanding estimands},
+   volume = {12},
+   year = {2021}
+}
+@article{Kahan2024,
+   abstract = {Estimands can be used in studies of healthcare interventions to clarify the interpretation of treatment effects. The addendum to the ICH E9 harmonised guideline on statistical principles for clinical trials (ICH E9(R1)) describes a framework for using estimands as part of a study. This paper provides an overview of the estimands framework, as outlined in the addendum, with the aim of explaining why estimands are beneficial; clarifying the terminology being used; and providing practical guidance on using estimands to decide the appropriate study design, data collection, and estimation methods. This article illustrates how to use the estimands framework by applying it to an ongoing trial in emergency bowel surgery. Estimands can be a useful way of clarifying the exact research question being evaluated in a study, both to avoid misinterpretation and to ensure that study methods are aligned to the overall study objectives.},
+   author = {Brennan C. Kahan and Joanna Hindley and Mark Edwards and Suzie Cro and Tim P. Morris},
+   doi = {10.1136/bmj-2023-076316},
+   issn = {17561833},
+   journal = {BMJ},
+   pmid = {38262663},
+   publisher = {BMJ Publishing Group},
+   title = {The estimands framework: A primer on the ICH E9(R1) addendum},
+   year = {2024}
+}

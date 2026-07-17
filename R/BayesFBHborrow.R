@@ -2709,30 +2709,30 @@ function(object, ...)
     ##      - anything that is made inside is attached to 'x'.
     ##      - 'x' is returned
 
-    x_call <- x$call
+    obj_call <- object$call
     
     G_chk <- FALSE
-    if(!is.null(x_call$G_compute)) G_chk <- eval(x_call$G_compute)
+    if(!is.null(obj_call$G_compute)) G_chk <- eval(obj_call$G_compute)
     
     CntlOnly <- FALSE
-    if(!is.null(x_call$CntlOnly)) CntlOnly <- eval(x_call$CntlOnly)
+    if(!is.null(obj_call$CntlOnly)) CntlOnly <- eval(obj_call$CntlOnly)
 
-    ind_J <- which(names(x$samples)=="J")
+    ind_J <- which(names(object$samples)=="J")
     nc_X <- ind_J - 1
     is_X <- nc_X > 0
     b_nms <- NULL
-    if(is_X) b_nms <- names(x$samples)[1:(ind_J-1)]
+    if(is_X) b_nms <- names(object$samples)[1:(ind_J-1)]
 
     is_2arm <- is_X && !CntlOnly
     is_Xadj <- nc_X > 1
     G_chk <- G_chk && is_Xadj
     
     ## do in all cases
-    n_grid <- nrow(x$surv_dat)
-    ind.t.if <- sapply(x$T.if, FUN=function(x, TT)max(which(TT<=x)), TT=x$surv_dat[,1])
-    S <- x$surv_dat[ind.t.if,-1]
+    n_grid <- nrow(object$surv_dat)
+    ind.t.if <- sapply(object$T.if, FUN=function(x, TT)max(which(TT<=x)), TT=object$surv_dat[,1])
+    S <- object$surv_dat[ind.t.if,-1]
     p_nms <- c("0.25","0.50", "0.75", "1.00")
-    t_nms <- round(x$T.if, 4)
+    t_nms <- round(object$T.if, 4)
 
     ## controls only, w covs or w/o covs
     if(!is_2arm)
@@ -2747,7 +2747,7 @@ function(object, ...)
         }
         if(is_Xadj)
         {
-            beta_reps <- x$samples[,b_nms,drop=FALSE]
+            beta_reps <- object$samples[,b_nms,drop=FALSE]
             beta_ests_cis <- t(apply(beta_reps, 2, FUN=\(x){ci_x <- ci(x); c(logHR=median(x), 'exp(logHR)'=exp(median(x)), `CrIn.L`=ci_x$CI_low, `CrIn.H`=ci_x$CI_high)}))
             dimnames(beta_ests_cis)[[1]] <- b_nms
             
@@ -2756,9 +2756,9 @@ function(object, ...)
             surv_df <- cbind(a_nms, p_nms, t_nms, surv_df)
             dimnames(surv_df) <- list(1:nrow(surv_df), c("Arm", "InfFrac", "Time", "Survival", "Surv_L", "Surv_U"))
 
-            x$coefficients <- beta_ests_cis
+            object$coefficients <- beta_ests_cis
         }
-        x$surv_summary <- surv_df
+        object$surv_summary <- surv_df
     }
     ## trtd+cntls, w covs or w/o covs
     if(is_2arm)
@@ -2769,7 +2769,7 @@ function(object, ...)
         if(!G_chk)
         {
             ## prepare table of conditional coefficient estimates
-            beta_reps <- x$samples[,b_nms,drop=FALSE]
+            beta_reps <- object$samples[,b_nms,drop=FALSE]
             beta_ests_cis <- t(apply(beta_reps, 2, FUN=\(x){ci_x <- ci(x); c(logHR=median(x), 'exp(logHR)'=exp(median(x)), `CrIn.L`=ci_x$CI_low, `CrIn.H`=ci_x$CI_high)}))
             dimnames(beta_ests_cis)[[1]] <- b_nms
             
@@ -2779,7 +2779,7 @@ function(object, ...)
             surv_df <- cbind(a_nms, p_nms2, t_nms2, surv_df)
             dimnames(surv_df) <- list(1:nrow(surv_df), c("Arm", "InfFrac", "Time", "Survival", "Surv_L", "Surv_U"))
 
-            x$coefficients <- beta_ests_cis
+            object$coefficients <- beta_ests_cis
         }
         if(G_chk && is_Xadj)
         {
@@ -2794,12 +2794,12 @@ function(object, ...)
             MTE <- cbind(p_nms, t_nms, mte)
             dimnames(MTE) <- list(1:nrow(MTE), c("InfFrac", "Time", "MTE", "exp(MTE)", "MTE_L", "MTE_U"))
 
-            x$coefficients <- MTE
+            object$coefficients <- MTE
         }
-        x$surv_summary <- surv_df
+        object$surv_summary <- surv_df
     }    
 
-    x
+    object
 }
 
 ## coef.BayesFBHborrow
@@ -3036,7 +3036,7 @@ function(p0, p1)
     x1 <- p1[1]; y1 <- p1[2]
     M <- matrix(c(x0^2, x1^2, 2*x1, x0, x1, 1, 1, 1, 0), 3, 3)
     b <- c(y0, y1, 0)
-    solve(M)%*%b
+    solve(M, b)
 }
 
 update.BayesFBHborrow <-
@@ -3080,7 +3080,7 @@ sigma2_update <- function(mu, lambda_0, Sigma_s, J, a_sigma, b_sigma) {
   a_post <- a_sigma + (J + 1) / 2
 
   one <- rep(1, J + 1)
-  cp <- t(mu * one - log(lambda_0)) %*% solve(Sigma_s) %*% (mu * one - log(lambda_0))
+  cp <- t(mu * one - log(lambda_0)) %*% solve(Sigma_s, mu * one - log(lambda_0))
   b_post <- b_sigma + cp / 2
 
   sigma2 <- invgamma::rinvgamma(1, shape = a_post, rate = b_post)
@@ -3088,59 +3088,13 @@ sigma2_update <- function(mu, lambda_0, Sigma_s, J, a_sigma, b_sigma) {
 
 mu_update <- function(Sigma_s, lambda_0, sigma2, J) {
   one <- rep(1, J + 1)
-  mu_num <- (t(one) %*% solve(Sigma_s) %*% log(lambda_0))
-  mu_den <- t(one) %*% solve(Sigma_s) %*% one
+  mu_num <- t(one) %*% solve(Sigma_s, log(lambda_0))
+  mu_den <- t(one) %*% solve(Sigma_s, one)
   mu_mu <- mu_num / mu_den
 
   mu_var <- sigma2 / mu_den
 
   mu <- stats::rnorm(1, mean = mu_mu, sd = sqrt(mu_var))
-}
-
-## old.ICAR_calc
-## the old one (see below)
-old.ICAR_calc <- function(s, J, clam) {
-
-  W <- matrix(rep(0,(J + 1) * (J + 1)), nrow = J + 1)
-  Q <- matrix(rep(0,(J + 1) * (J + 1)), nrow = J + 1)
-
-  interval_length <- diff(s[!(is.na(s))])
-
-  if (J < 2) {
-    if (J == 1) {
-
-      W[1, 2] <- clam * (interval_length[1] + interval_length[2]) / (2 * interval_length[1] + interval_length[2])
-      W[2, 1] <- clam * (interval_length[2]+ interval_length[1]) / (interval_length[1] + 2 * interval_length[2])
-      Q[1, 1] <- 2 / (2 * interval_length[1] + interval_length[2])
-      Q[2, 2] <- 2 / (interval_length[1] + 2 * interval_length[2])
-      Sigma_s <- solve(diag(J + 1) - W) %*% Q
-
-    } else {
-
-      Sigma_s <- as.matrix(1)
-
-    }
-  } else {
-
-    for (j in 2:J) {
-
-      W[j, j + 1] <- clam * (interval_length[j] + interval_length[j + 1]) / (interval_length[j-1] + 2 * interval_length[j] + interval_length[j + 1])
-      W[j, j-1] <- clam * (interval_length[j] + interval_length[j-1]) / (interval_length[j-1] + 2 * interval_length[j] + interval_length[j + 1])
-      Q[j, j] <- 2 / (interval_length[j-1] + 2 * interval_length[j] + interval_length[j + 1])
-
-    }
-
-    Q[j + 1, j + 1] <- 2 / (interval_length[J] + 2 * interval_length[j + 1])
-    Q[1, 1] <- 2 / (2 * interval_length[1] + interval_length[2])
-    W[1, 2] <- clam * (interval_length[1] + interval_length[2]) / (2 * interval_length[1] + interval_length[2])
-    W[j + 1, J] <- clam * (interval_length[j + 1] + interval_length[J]) / (interval_length[J]+ 2 * interval_length[j + 1])
-
-    Sigma_s <- solve(diag(j + 1) - W) %*% Q
-
-  }
-
-  return(list(Sigma_s = Sigma_s, W = W, Q = Q))
-
 }
 
 ## ICAR_calc
