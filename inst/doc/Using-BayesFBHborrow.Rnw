@@ -717,7 +717,18 @@ marginal hazard ratio, which is no longer constant over time.
 %%                 joint posterior.
 
 <<label=sim-exmpls, echo=FALSE, results=hide>>=
+########################################################################################################
+##   SET do_examples_option:  uncomment a line
+##
+     do_examples_option <- character(0) # don't run the examples, there are saved versions in RData sets
+##   do_examples_option <- 1            # do just the simulated data examples
+##   do_examples_option <- 2            # do just the GBCS with borrowing examples
+##   do_examples_option <- 3            # do options 1 & 2
+##   do_examples_option <- 4            # do just the GBCS no borrowing examples
+##   do_examples_option <- 5            # do everything
+
 ## chunk 1
+
 options(prompt = "R> ", continue = "   + ")
 
 ## chunk 2
@@ -788,7 +799,8 @@ DAT_hst <- dat_lst$DAT_hst
 ## chunk 6
 do_sim_exmpls <- FALSE
 ## raw <- Sys.getenv("clparam1")
-raw <- commandArgs(trailingOnly=TRUE)
+## raw <- commandArgs(trailingOnly=TRUE)
+raw <- do_examples_option
 is_missing <- is.character(raw) && length(raw) == 0
 if(!is_missing) do_sim_exmpls <- (as.numeric(raw) %in% c(1,3,5))
 sim_exmpls_fnms <- suppressWarnings(system("ls -t *bfbhb-sim-exmpls.rda", intern=TRUE, ignore.stderr=TRUE))[1]
@@ -828,7 +840,7 @@ if(do_sim_exmpls)
     date.stamp <- format(Sys.time(), "%Y-%m-%d-%H:%M:%S")
 
     fnm <- "bfbhb-sim-exmpls.rda"
-    save(list=c("params", "DAT_cc", "DAT_hst", "fit_sim_hst_cnd", "fit_sim_nb_cndl", "fit_sim_wb_cndl"), file=fnm)
+    save(list=c("params", "DAT_cc", "DAT_hst", "fit_sim_hst_cndl", "fit_sim_nb_cndl", "fit_sim_wb_cndl"), file=fnm)
 }
 if(!do_sim_exmpls)
 {
@@ -887,7 +899,7 @@ gbcs_hist <- gbcs_full[with(gbcs_full, (hst_flg==1) & (tamoxifen==0)),]
 
 do_gbcs_nb <- FALSE
 ## raw <- Sys.getenv("clparam1")
-raw <- commandArgs(trailingOnly=TRUE)
+raw <- do_examples_option 
 is_missing <- is.character(raw) && length(raw) == 0
 if(!is_missing) do_gbcs_nb <- (as.numeric(raw) %in% c(4,5))
 gbcs_nb_fnms <- suppressWarnings(system("ls -t *bfbhb-gbcs-nb-exmpl.rda", intern=TRUE, ignore.stderr=TRUE))[1]
@@ -918,7 +930,7 @@ if(!do_gbcs_nb)
 
 do_gbcs_exmpls <- FALSE
 ## raw <- Sys.getenv("clparam1")
-raw <- commandArgs(trailingOnly=TRUE)
+raw <- do_examples_option
 is_missing <- is.character(raw) && length(raw) == 0
 if(!is_missing) do_gbcs_exmpls <- (as.numeric(raw) %in% c(2,3,5))
 gbcs_exmpls_fnms <- suppressWarnings(system("ls -t *bfbhb-gbcs-exmpls.rda", intern=TRUE, ignore.stderr=TRUE))[1]
@@ -974,17 +986,11 @@ data generated via an included simulation function, \code{genBFBHBdat}, to concl
 Study (GBCS) of Tamoxifen which is publicly available in the \proglang{R} package, \pkg{condSURV}. Note that this document can be
 processed from the package vignette directory using the command
 \begin{center}
-  \code{echo `Sweave("Using-BayesFBHborrow.Rnw")' | R {-}{-}no-save {-}{-}quiet {-}{-}args N \&}
-\end{center}
-where $N$ specifies which sampler examples to run. Setting $N = 1$ runs the simulated data examples; $N = 2$ runs only the GBCS
-examples with borrowing; $N = 3$ runs the examples corresponding to $N = 1$ and $N = 2$; $N = 4$ runs only the GBCS example
-without borrowing; and $N = 5$ runs all examples. 
-Issuing 
-\begin{center}
   \code{echo `Sweave("Using-BayesFBHborrow.Rnw")' | R {-}{-}no-save {-}{-}quiet \&}
 \end{center}
-instead processes the document without running the sampler, relying entirely on the saved examples R datasets included with the
-vignette.  
+This will process the document and create all the figures and tables using pre-cooked sampler runs stored in R datasets included
+with this vignette. If you wish to rerun a collection or all of the sampler examples from scratch, locate the
+\code{do\_examples\_option} line at the top of the first R code block in the vignette source file and set it appropriately. 
 
 \subsection{Examples using simulated data}
 The simulated current trial and historical control dataset are obtained via the included data generation function

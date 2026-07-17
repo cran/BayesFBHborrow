@@ -3,7 +3,18 @@
 ###################################################
 ### code chunk number 1: sim-exmpls
 ###################################################
+########################################################################################################
+##   SET do_examples_option:  uncomment a line
+##
+     do_examples_option <- character(0) # don't run the examples, there are saved versions in RData sets
+##   do_examples_option <- 1            # do just the simulated data examples
+##   do_examples_option <- 2            # do just the GBCS with borrowing examples
+##   do_examples_option <- 3            # do options 1 & 2
+##   do_examples_option <- 4            # do just the GBCS no borrowing examples
+##   do_examples_option <- 5            # do everything
+
 ## chunk 1
+
 options(prompt = "R> ", continue = "   + ")
 
 ## chunk 2
@@ -74,7 +85,8 @@ DAT_hst <- dat_lst$DAT_hst
 ## chunk 6
 do_sim_exmpls <- FALSE
 ## raw <- Sys.getenv("clparam1")
-raw <- commandArgs(trailingOnly=TRUE)
+## raw <- commandArgs(trailingOnly=TRUE)
+raw <- do_examples_option
 is_missing <- is.character(raw) && length(raw) == 0
 if(!is_missing) do_sim_exmpls <- (as.numeric(raw) %in% c(1,3,5))
 sim_exmpls_fnms <- suppressWarnings(system("ls -t *bfbhb-sim-exmpls.rda", intern=TRUE, ignore.stderr=TRUE))[1]
@@ -114,7 +126,7 @@ if(do_sim_exmpls)
     date.stamp <- format(Sys.time(), "%Y-%m-%d-%H:%M:%S")
 
     fnm <- "bfbhb-sim-exmpls.rda"
-    save(list=c("params", "DAT_cc", "DAT_hst", "fit_sim_hst_cnd", "fit_sim_nb_cndl", "fit_sim_wb_cndl"), file=fnm)
+    save(list=c("params", "DAT_cc", "DAT_hst", "fit_sim_hst_cndl", "fit_sim_nb_cndl", "fit_sim_wb_cndl"), file=fnm)
 }
 if(!do_sim_exmpls)
 {
@@ -175,7 +187,7 @@ gbcs_hist <- gbcs_full[with(gbcs_full, (hst_flg==1) & (tamoxifen==0)),]
 
 do_gbcs_nb <- FALSE
 ## raw <- Sys.getenv("clparam1")
-raw <- commandArgs(trailingOnly=TRUE)
+raw <- do_examples_option 
 is_missing <- is.character(raw) && length(raw) == 0
 if(!is_missing) do_gbcs_nb <- (as.numeric(raw) %in% c(4,5))
 gbcs_nb_fnms <- suppressWarnings(system("ls -t *bfbhb-gbcs-nb-exmpl.rda", intern=TRUE, ignore.stderr=TRUE))[1]
@@ -206,7 +218,7 @@ if(!do_gbcs_nb)
 
 do_gbcs_exmpls <- FALSE
 ## raw <- Sys.getenv("clparam1")
-raw <- commandArgs(trailingOnly=TRUE)
+raw <- do_examples_option
 is_missing <- is.character(raw) && length(raw) == 0
 if(!is_missing) do_gbcs_exmpls <- (as.numeric(raw) %in% c(2,3,5))
 gbcs_exmpls_fnms <- suppressWarnings(system("ls -t *bfbhb-gbcs-exmpls.rda", intern=TRUE, ignore.stderr=TRUE))[1]
