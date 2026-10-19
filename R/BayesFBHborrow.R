@@ -722,9 +722,7 @@ GibbsMH_wborrow <- function(Y,
     handlers(
       handler_progress(
         format = "[:bar] :percent | :message"
-      ),
-      global = TRUE
-    )
+      ))
     
     with_progress({
         
