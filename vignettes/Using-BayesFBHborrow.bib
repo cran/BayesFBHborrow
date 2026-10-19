@@ -58,7 +58,7 @@ Analysis},
   }
 
 @article{lewis,
-author = {Connor Jo Lewis, Somnath Sarkar, Jiawen Zhu and Bradley P. Carlin},
+author = {Lewis, Connor Jo and Sarkar, Somnath and Zhu, Jiawen and Carlin, Bradley P},
 title = {Borrowing from historical Control Data in Cancer Drug Development: A Cautionary Tale and Practical Guidelines},
 journal = {Statistics in Biopharmaceutical Research},
 volume = {11},
@@ -279,9 +279,9 @@ Multivariate Failure Time Data},
 @Manual{BayesFBHborrow,
     title = {BayesFBHborrow: Bayesian Dynamic Borrowing with Flexible Baseline Hazard
 Function},
-    author = {Darren Scott and Sophia Axillus},
-    year = {2024},
-    note = {R package version 2.0.1},
+    author = {Darren Scott and Sophia Axillus and Grant Izmirlian},
+    year = {2026},
+    note = {R package version 2.0.15},
     url = {https://CRAN.R-project.org/package=BayesFBHborrow},
   }
 
@@ -464,6 +464,17 @@ Function},
    year = {2024}
 }
 
+@article{Gogtay2021,
+   author = {Nithya J Gogtay and Priya Ranganathan and Rakesh Aggarwal},
+   doi = {10.4103/picr.picr_384_20},
+   journal = {Perspectives in Clinical Research},
+   volume = {12},
+   issue = {2},
+   title = {Understanding estimands},
+   pages = {106-112},
+   year = {2021}
+}
+
 @article{Daniel2021,
    abstract = {We revisit the well-known but often misunderstood issue of (non)collapsibility of effect measures in regression models for binary and time-to-event outcomes. We describe an existing simple but largely ignored procedure for marginalizing estimates of conditional odds ratios and propose a similar procedure for marginalizing estimates of conditional hazard ratios (allowing for right censoring), demonstrating its performance in simulation studies and in a reanalysis of data from a small randomized trial in primary biliary cirrhosis patients. I},
    author = {Rhian Daniel and Jingjing Zhang and Daniel Farewell},
@@ -481,11 +492,19 @@ Function},
    year = {2021}
 }
 
-@techReport{FDA2026,
-   author = {FDA},
-   title = {Use of Bayesian methodology in clinical trials of drug and biological products},
-   year = {2026}
+@techreport{FDA2026,
+  author      = {{U.S. Food and Drug Administration}},
+  title       = {Use of {Bayesian} Methodology in Clinical Trials of Drug and Biological Products: Draft Guidance for Industry},
+  institution = {U.S. Department of Health and Human Services, Food and Drug Administration, Center for Drug Evaluation and Research (CDER), Center for Biologics Evaluation
+                 and Research (CBER)},
+  year        = {2026},
+  month       = {jan},
+  type        = {Draft Guidance for Industry},
+  number      = {Docket No. FDA-2025-D-3217},
+  note        = {Federal Register Notice of Availability: 91 FR 1190, Doc No. 2026-00325},
+  url         = {https://fda.gov}
 }
+
 @article{Sjlander2016,
    author = {Arvid Sjölander and Elisabeth Dahlqwist and Johan Zetterqvist},
    doi = {10.1097/EDE.0000000000000433},
@@ -547,31 +566,4 @@ Function},
    title = {On conditional and intrinsic autoregressions},
    volume = {82},
    year = {1995},
-}
-
-@article{Gogtay2021,
-   abstract = {Randomized controlled trials are the gold standard for determining the efficacy of a new intervention. Trials conducted for regulatory approval of an intervention compare the effect of the intervention with the standard of care or placebo to demonstrate efficacy. Randomization attempts to ensure that all known and unknown confounding factors are evenly distributed between the groups, and that the groups will be comparable at the end of the study, so that any inter-group differences in outcomes can be attributed to the intervention. However, in reality, intercurrent events may impact the assessment and subsequent interpretation of the outcome of interest. To address this, International Council for Harmonisation of Technical Requirements for Pharmaceuticals for Human Use (ICH) in 2017, released an addendum to the E9 guideline (ICH E9 R1) putting forth the concept of Estimands and Sensitivity Analysis in Clinical Trials. This addendum addresses how these intercurrent events are to be handled using the Estimand concept, which is now expected to be detailed in a separate section of the study protocol. In this paper, we discuss what estimands are, and their likely impact on how regulatory trial protocols and their statistical analyses plans are written and implemented. We also look at the application of the concept of estimands to routine clinical practice.},
-   author = {Nithya Jaideep Gogtay and Priya Ranganathan and Rakesh Aggarwal},
-   doi = {10.4103/picr.picr_384_20},
-   issn = {22295488},
-   issue = {2},
-   journal = {Perspectives in Clinical Research},
-   keywords = {Clinical trials,drug development,estimand,hypothetical,regulatory},
-   month = {4},
-   pages = {106-112},
-   publisher = {Wolters Kluwer Medknow Publications},
-   title = {Understanding estimands},
-   volume = {12},
-   year = {2021}
-}
-@article{Kahan2024,
-   abstract = {Estimands can be used in studies of healthcare interventions to clarify the interpretation of treatment effects. The addendum to the ICH E9 harmonised guideline on statistical principles for clinical trials (ICH E9(R1)) describes a framework for using estimands as part of a study. This paper provides an overview of the estimands framework, as outlined in the addendum, with the aim of explaining why estimands are beneficial; clarifying the terminology being used; and providing practical guidance on using estimands to decide the appropriate study design, data collection, and estimation methods. This article illustrates how to use the estimands framework by applying it to an ongoing trial in emergency bowel surgery. Estimands can be a useful way of clarifying the exact research question being evaluated in a study, both to avoid misinterpretation and to ensure that study methods are aligned to the overall study objectives.},
-   author = {Brennan C. Kahan and Joanna Hindley and Mark Edwards and Suzie Cro and Tim P. Morris},
-   doi = {10.1136/bmj-2023-076316},
-   issn = {17561833},
-   journal = {BMJ},
-   pmid = {38262663},
-   publisher = {BMJ Publishing Group},
-   title = {The estimands framework: A primer on the ICH E9(R1) addendum},
-   year = {2024}
 }

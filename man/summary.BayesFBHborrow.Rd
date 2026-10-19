@@ -11,7 +11,7 @@
 }
 \arguments{
   \item{object}{An object of class \code{BayesFBHborrow}.}
-  \item{...}{Additional arguments to generic summary}
+  \item{\dots}{Additional arguments to generic summary}
 }
 \details{
   Every call to the function runs the sampler and then produces the
@@ -48,10 +48,31 @@
   \code{\link{BayesFBHborrow}},
 }
 \examples{
-    \dontrun{
-        my_coefs_cndl <- coef(my_bfhb)
-        my_coefs_mgnl <- coef(update(my_bfhb, G_compute=TRUE))
-    }
+  \donttest{
+    n_cc_1 <- 200
+    n_cc_0 <- 100
+    n_hst <- 100
+    int_cc <- int_hst <- -log(3)
+    B_x_cc <- B_x_hst <- c(-0.3,0.5,0.25,-0.5)
+    B_trt <- log(0.55)
+
+    dat_lst <- 
+        genBFBHBdat(n_cc_1=200, n_cc_0=100, n_hst=100,
+                    B_trt=B_trt, B_x_cc=B_x_cc, B_x_hst=B_x_hst, 
+                    int_cc=int_cc, int_hst=int_hst, shape=2,
+                    t_er=0.5, t_fin=1.5, X_fact_levs=3)
+
+    DAT_cc <- trial_data(dat_lst)
+    DAT_hst <- historical_data(dat_lst)
+
+    my_bfbhb <- BayesFBHborrow(Surv(tte, event) ~ X_trt + X_01 + X_02 + X_03,
+                               data = DAT_cc, data_hist = DAT_hst,
+                               model_choice = 'mix', iter = 10, warmup_iter = 5,
+                               refresh = 0, verbose = FALSE)
+
+    my_bfbhb.s <- summary(my_bfbhb)
+    my_bfbhb.s
+  }
 }
 \concept{Bayesian borrowing}
 \concept{flexible baseline hazard}

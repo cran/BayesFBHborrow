@@ -17,27 +17,37 @@
   }
 }
 \details{
+
   MCMC samples of the baseline hazard are natively represented as number
-  of split-points, location of split-points and piecewise
-  hazards. However the gibbs/MH updating done internally invovles
-  integrals over the time to event CDF is done with respect to a fine
-  mesh grid. Thus all \code{iter} samples must be snapped to this common
-  fine mesh grid of length \code{max_grid}. Row by row updates of this
-  matrix within iterations of the sampler is impractical as multiple
-  copies and persistence within a loop will quickly consume
-  resources. For this reason the\code{max_grid} by \code{iter}
-  matrix representations of the conditional baseline hazard, marginal
-  control arm hazard and marginal treated arm hazard are written out to
-  three corresponding binary files: \code{cnd_blh_*.bin},
-  \code{mgnl_haz0_*.bin}, and \code{mgnl_haz1_*.bin}. The files are
-  written out sample by sample during iterations and then read back in
-  at the end for summarizing. The files are given a unique random hex
-  suffix for each call to the function and are left in the working
-  directory so that the user may use them to calculate any desired
-  functional of the posterior distribution. If you delete the *.bin
-  files it will, of course, not work. The names of the binary files
-  associated with a given result are returned with the object so if
-  desired you can clean house.  
+  of split-points, location of split-points and corresponding values of
+  the piecewise hazards. However the gibbs/MH updating done internally
+  invovles integrals over the time to event CDF is done with respect to
+  a fine mesh grid. Thus all \code{iter} samples must be snapped to a
+  common fine mesh grid of length \code{max_grid}. Row by row updates of
+  this matrix within iterations of the sampler is impractical based upon
+  the way R handles updating arrays involving multiple copies of it and
+  persistence of this memory usage within a loop until completion. This
+  will quickly consume free memory resulting in diskcaching and
+  ultimately machine freeze. For this reason binary file writes, per
+  iteration of the sampling loop, are done for the snapped to grid
+  versions of the following fucntions: the control arm conditional hazard,
+  conditional cumulative hazard, arm specific logged negative logged
+  marginal survival functions for which the difference is the marginal
+  treatment effect as a function of time, and the marginal hazards,
+  computed as the finite difference quotient of the their exponentiated
+  values. These files are then read back in after the sampling loop
+  for the summarization step. The corresponding six file names in
+  order given above are: \code{cnd_haz_0_*.bin}, \code{cnd_cumHz0_*.bin},
+  \code{lml_mgnl_surv_0_*.bin}, \code{lml_mgnl_surv_1_*.bin},
+  \code{mgnl_haz_0_*.bin}, and \code{_mgnl_haz_1_*.bin}. The default
+  behavior is to delete them when the main routine,
+  \code{BayesFBHborrow}, exits. However, if the user wishes to use them
+  in downstream calculation of functionals of the posterior distribution
+  of these quantities, the argument \code{keep_binary_files} should be
+  set to \code{TRUE}. Then one calls this function with the single
+  argument \code{object}, the result of \code{BayesFBHborrow}. 
+  The names of the binary files associated with a given result are
+  returned with the object.
 }
 \value{
   A list with components

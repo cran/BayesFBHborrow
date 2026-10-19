@@ -17,9 +17,16 @@ BayesFBHborrow <- function(formula = NULL,
                            standardise = TRUE,
                            G_compute = FALSE,
                            preprocess = TRUE, 
-                           fnm_cnd_blh = "cnd_blh",
-                           fnm_mgnl_haz0 = "mgnl_haz0",
-                           fnm_mgnl_haz1 = "mgnl_haz1",
+                           fnm_cnd_haz_0 = "cnd_haz_0",
+                           fnm_cnd_cumHz_0 = "cnd_cumHz_0",
+                           fnm_lml_mgnl_surv_0 = "lml_mgnl_surv_0",
+                           fnm_lml_mgnl_surv_1 = "lml_mgnl_surv_1",
+                           fnm_mgnl_haz_0 = "mgnl_haz_0",
+                           fnm_mgnl_haz_1 = "mgnl_haz_1",
+                           sfx = NULL,
+                           keep_bin_files = FALSE,
+                           n_chains = 1L,
+                           hpc_max_cores = 16,
                            dbg=FALSE,
                            ...){
 
@@ -54,20 +61,22 @@ BayesFBHborrow.WBorrow <-
              standardise = TRUE,
              G_compute = FALSE,
              preprocess = TRUE, 
-             fnm_cnd_blh = "cnd_blh",
-             fnm_mgnl_haz0 = "mgnl_haz0",
-             fnm_mgnl_haz1 = "mgnl_haz1",
+             fnm_cnd_haz_0 = "cnd_haz_0",
+             fnm_cnd_cumHz_0 = "cnd_cumHz_0",
+             fnm_lml_mgnl_surv_0 = "lml_mgnl_surv_0",
+             fnm_lml_mgnl_surv_1 = "lml_mgnl_surv_1",
+             fnm_mgnl_haz_0 = "mgnl_haz_0",
+             fnm_mgnl_haz_1 = "mgnl_haz_1",
+             sfx = NULL,
+             keep_bin_files = FALSE,
+             n_chains = 1L,
+             hpc_max_cores = 16,
              dbg=FALSE,
              ...){
    ## when doing borrowing we have a current data set with a treatment indicator and controls only historical dataset
    if(dbg)browser()
   .call. <- mf <- match.call()
   .call.[[1]] <- as.name("BayesFBHborrow")
-
-  r_sfx <- rand_hex_strng(6)
-  fnm_cnd_blh = fnm_cnd_blh %,% "_" %,% r_sfx %,% "_wb.bin"
-  fnm_mgnl_haz0 = fnm_mgnl_haz0 %,% "_" %,% r_sfx %,% "_wb.bin"
-  fnm_mgnl_haz1 = fnm_mgnl_haz1 %,%  "_" %,%r_sfx %,% "_wb.bin"
 
   if(missing(CntlOnly)) CntlOnly <- FALSE
   if(!missing(formula))
@@ -79,8 +88,9 @@ BayesFBHborrow.WBorrow <-
 
       mf$model_choice <- mf$tuning_parameters <- mf$hyperparameters <- 
           mf$iter <- mf$warmup_iter <- mf$refresh <- mf$verbose <- mf$max_grid <- 
-              mf$standardise <- mf$G_compute <- mf$fnm_cnd_blh <- mf$fnm_mgnl_haz0 <- 
-                  mf$fnm_mgnl_haz1 <- NULL
+              mf$standardise <- mf$G_compute <- mf$fnm_cnd_haz_0 <- mf$fnm_cnd_cumHz_0 <- mf$fnm_lml_mgnl_surv_0 <- 
+                  mf$fnm_lml_mgnl_surv_1 <- mf$fnm_mgnl_haz_0 <- mf$fnm_mgnl_haz_1 <- mf$sfx <- mf$keep_bin_files <-
+                      mf$n_chains <- mf$hpc_max_cores <- NULL
       mf <- eval(mf)
                  
       R <- mf$R
@@ -137,22 +147,40 @@ BayesFBHborrow.WBorrow <-
           }
           nms_cnt <- NULL
       }
-  }        
-  if (verbose) {
-    hyperparameters <- set_hyperparameters(hyperparameters = hyperparameters, model_choice = model_choice)
-    tuning_parameters <- set_tuning_parameters(tuning_parameters = tuning_parameters,
-                                                borrow = TRUE, X = X, X_0 = X_0)
-    message("Starting MCMC sampler")
-  } else {
-    suppressMessages(
-      hyperparameters <-
-        set_hyperparameters(hyperparameters = hyperparameters, model_choice = model_choice)
-    )
-    suppressMessages(
-      tuning_parameters <-
-        set_tuning_parameters(tuning_parameters = tuning_parameters, borrow = TRUE, X = X, X_0 = X_0))
   }
 
+  is_X0 <- !is.null(X_0)
+
+  borrow <- ifelse(is_X0, "yesX0", "yes1")
+        
+  set_hp_call <- as.call(expression(set_hyperparameters))
+  set_hp_call$model_choice <- model_choice
+  set_hp_call$verbose <- verbose      
+  if(!missing(hyperparameters))
+    for(a in names(hyperparameters)) set_hp_call[[a]] <- hyperparameters[[a]]
+  hyperparameters <- eval(set_hp_call)
+
+  set_tp_call <- as.call(expression(set_tuning_parameters))
+  set_tp_call$borrow <- borrow
+  set_tp_call$verbose <- verbose      
+  if(!missing(tuning_parameters))
+    for(a in names(tuning_parameters)) set_tp_call[[a]] <- tuning_parameters[[a]]
+  tuning_parameters <- eval(set_tp_call)
+
+
+  min_iter_per_chain <- 100    
+  max_cores <- min(hpc_max_cores, availableCores() - 4)
+  n_chains <- max(1, min(max_cores, floor(iter/min_iter_per_chain)))
+  iter_per_chain <- ceiling(iter/n_chains)    
+
+  strategy <- if (Sys.getenv("SLURM_JOB_ID") != "") "multisession" else "multicore"
+  plan(strategy, workers = n_chains)
+
+  if(verbose) message(sprintf("Using %g chains in %g %s with %g iterations per %s.\n", n_chains,
+                              n_chains, strategy %,% "s", iter_per_chain, strategy))
+
+  if(missing(sfx)) sfx <- rnd_hex_strng(6)
+        
   out <- GibbsMH_wborrow(Y = R[,1],
                          I = R[,2],
                          X = X,
@@ -161,16 +189,22 @@ BayesFBHborrow.WBorrow <-
                          X_0 = X_0,
                          tuning_parameters = tuning_parameters,
                          hyperparameters = hyperparameters,
-                         iter = iter,
+                         iter = iter_per_chain,
                          warmup_iter = warmup_iter,
                          refresh = refresh,
                          max_grid = max_grid,
                          CntlOnly = CntlOnly,
                          standardise = standardise,
                          G_compute = G_compute,
-                         fnm_cnd_blh = fnm_cnd_blh,
-                         fnm_mgnl_haz0 = fnm_mgnl_haz0,
-                         fnm_mgnl_haz1 = fnm_mgnl_haz1)
+                         fnm_cnd_haz_0 = fnm_cnd_haz_0,
+                         fnm_cnd_cumHz_0 = fnm_cnd_cumHz_0,
+                         fnm_lml_mgnl_surv_0 = fnm_lml_mgnl_surv_0,
+                         fnm_lml_mgnl_surv_1 = fnm_lml_mgnl_surv_1,
+                         fnm_mgnl_haz_0 = fnm_mgnl_haz_0,
+                         fnm_mgnl_haz_1 = fnm_mgnl_haz_1,
+                         sfx = sfx,
+                         keep_bin_files = keep_bin_files,
+                         n_chains = n_chains)
 
   out$beta_acc_ratio <- out$beta_move / iter
   if (!is.null(out$beta_0_move)) out$beta_0_acc_ratio <- out$beta_0_move / iter
@@ -186,6 +220,11 @@ BayesFBHborrow.WBorrow <-
   return(out)
 }
 
+
+## NOTE 2026-09-23  changed model_choice to "no_borrow" like version 2.0.3
+## as it seems like this should be correct and I'm wondering if I introduced
+## a bug.
+## 
 ## Without borrowing method
 ## BayesFBHborrow.NoBorrow
 BayesFBHborrow.NoBorrow <-
@@ -195,7 +234,7 @@ BayesFBHborrow.NoBorrow <-
              subset,
              na.action,
              CntlOnly = FALSE,
-             model_choice = "mix",
+             model_choice = "no_borrow",
              tuning_parameters = NULL,
              hyperparameters = NULL,
              iter = 1000,
@@ -206,20 +245,22 @@ BayesFBHborrow.NoBorrow <-
              standardise = TRUE,
              G_compute = FALSE,
              preprocess = TRUE, 
-             fnm_cnd_blh = "cnd_blh",
-             fnm_mgnl_haz0 = "mgnl_haz0",
-             fnm_mgnl_haz1 = "mgnl_haz1",
+             fnm_cnd_haz_0 = "cnd_haz_0",
+             fnm_cnd_cumHz_0 = "cnd_cumHz_0",
+             fnm_lml_mgnl_surv_0 = "lml_mgnl_surv_0",
+             fnm_lml_mgnl_surv_1 = "lml_mgnl_surv_1",
+             fnm_mgnl_haz_0 = "mgnl_haz_0",
+             fnm_mgnl_haz_1 = "mgnl_haz_1",
+             sfx = NULL,
+             keep_bin_files = FALSE,
+             n_chains = 1L,
+             hpc_max_cores = 16,
              dbg=FALSE, 
              ...){
 
   if(dbg)browser()
   .call. <- match.call()
   .call.[[1]] <- as.name("BayesFBHborrow")
-
-  r_sfx <- rand_hex_strng(6)
-  fnm_cnd_blh = fnm_cnd_blh %,% "_" %,% r_sfx %,% "_nb.bin"
-  fnm_mgnl_haz0 = fnm_mgnl_haz0 %,% "_" %,% r_sfx %,% "_nb.bin"
-  fnm_mgnl_haz1 = fnm_mgnl_haz1 %,% "_" %,% r_sfx %,% "_nb.bin"
 
   if(!missing(formula))
   {
@@ -230,8 +271,9 @@ BayesFBHborrow.NoBorrow <-
       
       mf$model_choice <- mf$tuning_parameters <- mf$hyperparameters <- 
           mf$iter <- mf$warmup_iter <- mf$refresh <- mf$verbose <- mf$max_grid <- 
-              mf$standardise <- mf$G_compute <- mf$fnm_cnd_blh <- mf$fnm_mgnl_haz0 <- 
-                  mf$fnm_mgnl_haz1 <- NULL
+              mf$standardise <- mf$G_compute <- mf$fnm_cnd_haz_0 <- mf$fnm_cnd_cumHz_0 <- mf$fnm_lml_mgnl_surv_0 <- 
+                  mf$fnm_lml_mgnl_surv_1 <- mf$fnm_mgnl_haz_0 <- mf$fnm_mgnl_haz_1 <- mf$sfx <- mf$keep_bin_files <-
+                      mf$n_chains <- mf$hpc_max_cores <- NULL
       mf <- eval(mf)
                  
       R <- mf$R
@@ -275,32 +317,63 @@ BayesFBHborrow.NoBorrow <-
       nms_cnt <- NULL
   }
 
-  if (verbose) {
-    hyperparameters <- set_hyperparameters(hyperparameters = hyperparameters, model_choice = model_choice)
-    tuning_parameters <- set_tuning_parameters(tuning_parameters = tuning_parameters,
-                                               borrow = FALSE, X = X, X_0 = NULL)
-    message("Starting MCMC sampler")
-  } else {
-    suppressMessages(hyperparameters <- set_hyperparameters(hyperparameters = hyperparameters, model_choice = model_choice))
-    suppressMessages(tuning_parameters <- set_tuning_parameters(tuning_parameters = tuning_parameters,
-                                                                borrow = FALSE, X = X, X_0 = NULL))
-  }
+  borrow <- "no"
+      
+  set_hp_call <- as.call(expression(set_hyperparameters))
+  set_hp_call$model_choice <- model_choice
+  set_hp_call$verbose <- verbose      
+  if(!missing(hyperparameters))
+    for(a in names(hyperparameters)) set_hp_call[[a]] <- hyperparameters[[a]]
+  hyperparameters <- eval(set_hp_call)
 
+  set_tp_call <- as.call(expression(set_tuning_parameters))
+  set_tp_call$borrow <- borrow
+  set_tp_call$verbose <- verbose      
+  if(!missing(tuning_parameters))
+    for(a in names(tuning_parameters)) set_tp_call[[a]] <- tuning_parameters[[a]]
+  tuning_parameters <- eval(set_tp_call)
+
+  
+  ## don't do less than 100 on a core
+  ## so once you know n_cores, then n_chains should be max(iter/n_cores, 100)
+  ## unless iter is small enough to wait for
+  ## how about n_cores <- min(max avail, iter/200)
+  ##   n_chains <- max(iter/n_cores, 
+  ##
+  min_iter_per_chain <- 100    
+  max_cores <- min(hpc_max_cores, availableCores() - 4)
+  n_chains <- max(1, min(max_cores, floor(iter/min_iter_per_chain)))
+  iter_per_chain <- ceiling(iter/n_chains)    
+
+  strategy <- if (Sys.getenv("SLURM_JOB_ID") != "") "multisession" else "multicore"
+  plan(strategy, workers = n_chains)
+
+  if(verbose) message(sprintf("Using %g chains in %g %s with %g iterations per %s.\n", n_chains,
+                              n_chains, strategy %,% "s", iter_per_chain, strategy))
+
+  if(missing(sfx)) sfx <- rnd_hex_strng(6)
+      
   out <- GibbsMH_noborrow(Y = R[,1],
                           I = R[,2],
                           X = X,
                           tuning_parameters = tuning_parameters,
                           hyperparameters = hyperparameters,
-                          iter = iter,
+                          iter = iter_per_chain,
                           warmup_iter = warmup_iter,
                           refresh = refresh,
                           max_grid = max_grid,
-                          CntlOnly = CntlOnly, 
-                          standardise = standardise,                          
+                          CntlOnly = CntlOnly,
+                          standardise = standardise,
                           G_compute = G_compute,
-                          fnm_cnd_blh = fnm_cnd_blh,
-                          fnm_mgnl_haz0 = fnm_mgnl_haz0,
-                          fnm_mgnl_haz1 = fnm_mgnl_haz1)
+                          fnm_cnd_haz_0 = fnm_cnd_haz_0,
+                          fnm_cnd_cumHz_0 = fnm_cnd_cumHz_0,
+                          fnm_lml_mgnl_surv_0 = fnm_lml_mgnl_surv_0,
+                          fnm_lml_mgnl_surv_1 = fnm_lml_mgnl_surv_1,
+                          fnm_mgnl_haz_0 = fnm_mgnl_haz_0,
+                          fnm_mgnl_haz_1 = fnm_mgnl_haz_1,
+                          sfx = sfx,
+                          keep_bin_files = keep_bin_files,
+                          n_chains = n_chains)
 
   out$beta_acc_ratio <- out$beta_move / iter
 
@@ -502,656 +575,940 @@ GibbsMH_wborrow <- function(Y,
                             CntlOnly,
                             standardise,
                             G_compute,
-                            fnm_cnd_blh,
-                            fnm_mgnl_haz0,
-                            fnm_mgnl_haz1) {
+                            fnm_cnd_haz_0,
+                            fnm_cnd_cumHz_0,
+                            fnm_lml_mgnl_surv_0,
+                            fnm_lml_mgnl_surv_1,
+                            fnm_mgnl_haz_0,
+                            fnm_mgnl_haz_1,
+                            sfx,
+                            keep_bin_files,
+                            n_chains = 1L) {
 
-  ### Initialize parameters ###
-  # count accept for MH beta
-  lambda_0_count <- 0
-  lambda_count <- 0
-  lambda_move <- 0
-  lambda_0_move <- 0
+  ## make temp directory for files
+  dir_name <- "." %,% sfx
+  dir.create(dir_name)
 
-  # proposal prior
-  a_lambda <- tuning_parameters$a_lambda
-  b_lambda <- tuning_parameters$b_lambda
+  sl <- c("\\","/")[1 + (.Platform$OS.type == "unix")]
+  
+  ## prepend the new path to the filenames
+  fnm_cnd_haz_0 <- dir_name %,% sl %,% fnm_cnd_haz_0 
+  fnm_cnd_cumHz_0 <- dir_name %,% sl %,% fnm_cnd_cumHz_0
+  fnm_lml_mgnl_surv_0 <- dir_name %,% sl %,% fnm_lml_mgnl_surv_0
+  fnm_lml_mgnl_surv_1 <- dir_name %,% sl %,% fnm_lml_mgnl_surv_1
+  fnm_mgnl_haz_0 <- dir_name %,% sl %,% fnm_mgnl_haz_0
+  fnm_mgnl_haz_1 <- dir_name %,% sl %,% fnm_mgnl_haz_1
+   
 
-  # hyperparameters
-  a_sigma <- hyperparameters$a_sigma
-  b_sigma <- hyperparameters$b_sigma
-  clam <- hyperparameters$clam_smooth
-  phi <- hyperparameters$phi
+  ## ---------------------------------------------------------------
+  ## Validate parallel-processing arguments
+  ## ---------------------------------------------------------------
+  n_chains <- as.integer(n_chains)
 
-  stdz = 1.0
-  if(standardise == TRUE){
-    ## standardise time
+  if (is.na(n_chains) || n_chains < 1L) {
+    stop("'n_chains' must be a positive integer.")
+  }
+
+  ## `iter` is now the number of retained iterations per child chain.
+  ## The downstream posterior summaries use the total number of draws.
+  iter_total <- iter * n_chains
+    
+  ## ---------------------------------------------------------------
+  ## Standardise time once, in the parent process
+  ## ---------------------------------------------------------------
+  stdz <- 1.0
+
+  if (standardise) {
     Y.raw <- Y
     Y_0.raw <- Y_0
 
     stdz <- sum(I) / sum(Y.raw)
-    Y_0 <- Y_0.raw * stdz
+
     Y <- Y.raw * stdz
+    Y_0 <- Y_0.raw * stdz
   }
 
-  # Set initial values
-  J <- phi
-  sigma2 <- b_sigma / (a_sigma + 1)
-  Y_mix <- Y[Y < max(Y_0)]
-  quantiles <- quantile(Y_mix, probs = seq(0, 1, length.out = J + 2),
-                        na.rm = TRUE, names = FALSE)
-  s <- c(0, quantiles[1:J + 1], max(Y, Y_0))
-
-  # s need to be unique
-  if(length(unique(s)) < length(s)){
-    J <- 1
-    s <- c(0, max(Y, Y_0), max(Y))
-  }
-
-  ##Only works if X is a data.frame
-  group_data_cc <- group_summary(Y[X[,1] == 0], I[X[,1] == 0], NULL, s)
-  group_data_hist <- group_summary(Y_0, I_0, NULL, s)
-
-  lambda_init <- init_lambda_hyperparameters(group_data_cc, s)
-  lambda_init_hist <- init_lambda_hyperparameters(group_data_hist, s)
-
-  lambda <- mapply(stats::rgamma, n = 1,
-                   shape = lambda_init$shape,
-                   rate = lambda_init$rate)
-
-  lambda_0 <- mapply(stats::rgamma, n = 1,
-                     shape = lambda_init_hist$shape,
-                     rate = lambda_init_hist$rate)
-
-  ### mu and sigma2
-  # add the time exposed, etc.
-  lambda_init_sum_hist <- init_lambda_hyperparameters(lapply(group_data_hist, sum), s[c(1, J + 2)])
-  mu <- mean(log(mapply(stats::rgamma, n = 500,
-                        shape = lambda_init_sum_hist$shape,
-                        rate = lambda_init_sum_hist$rate)))
-
-  sigma2 <- var(log(mapply(stats::rgamma, n = 500,
-                           shape = lambda_init_sum_hist$shape,
-                           rate = lambda_init_sum_hist$rate)))
-
-  #Data and beta initial values
+  ## ---------------------------------------------------------------
+  ## Derived quantities common to all chains
+  ## ---------------------------------------------------------------
   bp <- ncol(X)
   bp_0 <- ncol(X_0)
-    
-  df_curr <- dataframe_fun(Y = Y, I = I, X = X, s = s, lambda = lambda, bp = ncol(X), J = J)
 
-  if(bp_0 == 0){
-    beta_0 <- NULL
+  time_grid <- seq(
+    from = 1e-8,
+    to = max(Y),
+    length.out = max_grid
+  )
+
+  ## These are base file-name prefixes only. The chain function will
+  ## append "_<sfx>_<k>_wb.bin" for each individual child chain.
+  input_list <- list(
+    Y = Y,
+    I = I,
+    X = X,
+
+    Y_0 = Y_0,
+    I_0 = I_0,
+    X_0 = X_0,
+
+    tuning_parameters = tuning_parameters,
+    hyperparameters = hyperparameters,
+
+    refresh = refresh,
+    max_grid = max_grid,
+    CntlOnly = CntlOnly,
+    G_compute = G_compute,
+
+    stdz = stdz,
+    time_grid = time_grid,
+
+    fnm_cnd_haz_0 = fnm_cnd_haz_0,
+    fnm_cnd_cumHz_0 = fnm_cnd_cumHz_0,
+    fnm_lml_mgnl_surv_0 = fnm_lml_mgnl_surv_0,
+    fnm_lml_mgnl_surv_1 = fnm_lml_mgnl_surv_1,
+    fnm_mgnl_haz_0 = fnm_mgnl_haz_0,
+    fnm_mgnl_haz_1 = fnm_mgnl_haz_1,
+
+    sfx = sfx,
+    keep_bin_files = keep_bin_files
+  )
+
+  ## ---------------------------------------------------------------
+  ## Establish independent and reproducible child RNG streams.
+  ##
+  ## The caller should normally set.seed() before calling this function.
+  ## L'Ecuyer-CMRG is appropriate for parallel MCMC child processes.
+  ## ---------------------------------------------------------------
+  RNGkind("L'Ecuyer-CMRG")
+
+  ## ---------------------------------------------------------------
+  ## Run the serial warmup chain.
+  ##
+  ## `initial_states = list(initialize = TRUE)` tells the chain function
+  ## to perform the original state initialization internally.
+  ## ---------------------------------------------------------------
+  warmup_out <- GibbsMH_wborrow_chain(
+    input_list = input_list,
+    initial_states = list(initialize = TRUE),
+    iter = warmup_iter,
+    is_warmup = TRUE,
+    k = 0L
+  )
+
+  warmup_state <- warmup_out$state_current_vals
+
+  ## ---------------------------------------------------------------
+  ## Run parallel post-warmup chains.
+  ##
+  ## Each child starts from the same post-warmup state. Each receives
+  ## its own unique file suffix using its chain number k.
+  ## ---------------------------------------------------------------
+
+  if (n_chains == 1L) {
+    p <- message
+    chain_out <- list(
+      GibbsMH_wborrow_chain(
+        input_list = input_list,
+        initial_states = warmup_state,
+        iter = iter,
+        is_warmup = FALSE,
+        k = 1L,
+        p = p
+      )
+    )
   } else {
-    df_hist <- dataframe_fun(Y = Y_0, I = I_0, X = X_0, s = s, lambda = lambda_0, bp = bp_0, J = J)
-    glm.mom_0 <- glmFit(df_hist)
-    beta_0 <- glm.mom_0$beta.mu
-    #beta_0_count <- numeric(bp_0)
-    ##### Testing: Multivariate proposal
-    beta_0_count <- 0
+    chain_ids <- seq_len(n_chains)
 
-    # prior as precision
-    beta_0_prior <- hyperparameters$beta_0_prior
-    beta_0_prior_prec <- diag(1/beta_0_prior, bp_0)
-  }
-
-  glm.mom <- glmFit(df_curr)
-  beta <- glm.mom$beta.mu
-  bp <- ncol(X)
-
-  # Check for G-computaion
-  if(bp == 1){
-    G_check <- 0
-  }else{
-    G_check <- G_compute * 1
-  }
-
-  #beta_count <- numeric(bp)
-  ##### Testing: Multivariate proposal
-  beta_count <- 0
-  beta_prior <- hyperparameters$beta_prior
-  beta_prior_prec <- diag(1/beta_prior, bp)
-
-  if(bp_0==0){
-    df_hist <- dataframe_fun(Y = Y_0, I = I_0, X = X_0, s = s, lambda = lambda_0, bp = bp_0, J = J)
-  }
-
-  a_tau <- hyperparameters$a_tau
-  b_tau <- hyperparameters$b_tau
-  type <- hyperparameters$type
-  Jmax <- hyperparameters$Jmax
-
-  if (type == "mix") {
-    c_tau <- hyperparameters$c_tau
-    d_tau <- hyperparameters$d_tau
-    p_0 <- hyperparameters$p_0
-    tau <- p_0 * invgamma::rinvgamma(J + 1, shape = a_tau, rate = b_tau) + (1-p_0) *
-           invgamma::rinvgamma(J + 1, shape = c_tau, rate = d_tau)
-  } else if (type == "uni") {
-    c_tau <- NULL
-    d_tau <- NULL
-    p_0 <- NULL
-    tau <- invgamma::rinvgamma(J+1, shape = a_tau, rate = b_tau)
-
-  } else {
-    c_tau <- hyperparameters$c_tau
-    d_tau <- hyperparameters$d_tau
-    p_0 <- hyperparameters$p_0
-    tau <- p_0 * invgamma::rinvgamma(1, shape = a_tau, rate = b_tau) + (1-p_0) *
-           invgamma::rinvgamma(1, shape = c_tau, rate = d_tau)
-  }
-
-  # Tuning parameters
-  cprop_beta <- tuning_parameters$cprop_beta
-  pi_b <- tuning_parameters$pi_b
-  alpha <- tuning_parameters$alpha
-  if (!is.null(X_0)) {
-    cprop_beta_0 <- tuning_parameters$cprop_beta_0
-  }
-
-  maxSj <- min(max(Y), max(Y_0))
-
-  ## treatment is always part of bp, with d pre-treatment covariates giving bp=d+1
-    ## bp_0 is 0 without covariates and bp_0=d with d pre-treatment covariates
-  nmsB <- dimnames(X)[[2]]  
-  samples <- data.frame(matrix(NA, nrow = 0, ncol = bp + bp_0 + 3))   # 2d + 1 + 3
-  if(bp > 0) colnames(samples)[1:bp] <- nmsB
-  if(bp_0 > 0) {
-    nmsB_0 <-   dimnames(X_0)[[2]] %,% "_0"
-    colnames(samples)[(bp + 1):(bp + bp_0)] <- nmsB_0
-  }
-  colnames(samples)[bp + bp_0 + (1:3)] <- c("J", "mu", "sigma2")
-
-  out_lambda <- data.frame(matrix(NA, nrow = 0, ncol = Jmax + 1))
-  out_lambda_0 <- data.frame(matrix(NA, nrow = 0, ncol = Jmax + 1))
-  out_s <- data.frame(matrix(NA, nrow = 0, ncol = Jmax + 2))
-
-  if(type %in% c("uni", "mix")) {
-    out_tau <- data.frame(matrix(NA, nrow = 0, ncol = Jmax +1))
-  }else{
-    out_tau <- data.frame(matrix(NA, nrow = 0, ncol = 1))
-    colnames(out_tau) <- NULL
-  }
-
-  ## Define grid of time points
-  time_grid <- seq(1e-8, max(Y), length.out =  max_grid)
-
-  ## open binary file for writing out adjusted baseline hazard
-  conn3 <- list()
-  ## open binary file for writing out adjusted baseline hazard
-  if(bp <= 1 || CntlOnly)
-  {
-    conn3$cnd_blh <- file(fnm_cnd_blh, "wb")
-
-    on.exit({
-      if (exists("conn3")) {
-        invisible(lapply(conn3, function(con) {
-          if (inherits(con, "connection")) {
-            try(close(con), silent = TRUE)
-          }
-        }))
-      }
-    }, add = TRUE)
-  }
-
-  ## 1) ARRAY out_slam iter x max_grid(2000) ## conditional baseline hazards
-  ## out_slam <-  data.frame(matrix(data = NA, nrow = 0, ncol =  max_grid))
-  ## colnames(out_slam) <- time_grid
-
-  # Array for marginal estimand from G-computation
-  if(bp > 1 && !CntlOnly){
-    nx <- nrow(X)
-    trtAX <- cbind(rep(1, nx), as.matrix(X[,-1]))
-    conAX <- as.matrix(X[,-1])
-
-    ## If doing G-computation, open binary file for writing out
-    ## conditional hazards in treatment (1) and control (0) arms
-    conn3 <- list(
-		   cnd_blh = file(fnm_cnd_blh, "wb"),
-		   mgnl_haz0 = file(fnm_mgnl_haz0, "wb"),
-		   mgnl_haz1 = file(fnm_mgnl_haz1, "wb")
-		 )
-
-    on.exit({
-      if (exists("conn3")) {
-        invisible(lapply(conn3, function(con) {
-          if (inherits(con, "connection")) {
-            try(close(con), silent = TRUE)
-          }
-        }))
-      }
-    }, add = TRUE)
-
-    ## 2) ARRAY lhaz_bar_trt iter x max_grid(2000) marginal treat hazard(t)
-    ## lhaz_bar_trt <- data.frame(matrix(NA, nrow = 0, ncol = max_grid))
-    ## colnames(lhaz_bar_trt) <- time_grid
-    ## 3) ARRAY out_slam iter x max_grid(2000) marginal control hazard(t)
-    ## lhaz_bar_con <- data.frame(matrix(NA, nrow = 0, ncol = max_grid))
-    ## colnames(lhaz_bar_con) <- time_grid
-
-    w_sxn_trt <- extraDistr::rdirichlet(iter, rep(1, nx)) # iter draws s x n
-    w_sxn_con <- extraDistr::rdirichlet(iter, rep(1, nx))
-  }
-
-  ### MCMC START ###
-  sample <- c(rep("(Warmup)", warmup_iter), rep("(Sampling)", iter))
-  mess <- character(iter + warmup_iter)
-  if (refresh != 0 && refresh < (iter + warmup_iter)) {
-    mess[seq(refresh, iter + warmup_iter, refresh)] <- paste("Iteration:",
-                                                             seq(refresh, iter + warmup_iter, refresh), "/", (iter + warmup_iter),
-                                                             sample[seq(refresh, iter + warmup_iter, refresh)])
-  } else if (refresh > (iter + warmup_iter)) {
-    message("'refresh' is larger than number of iterations, using default value (0)")
-    refresh <- 0
-  }
-
-  j <- 1 # indx after warmup_iter
-
-  for(i in 1:(iter + warmup_iter)) {
-    if(i%%refresh == 0 && refresh != 0){message(mess[i])}
-
-    ICAR <- ICAR_calc(s = s, J = J, clam = clam)
-    Sigma_s <- ICAR$Sigma_s
-
-    # 1. Conjugate posterior updates [Gibbs]
-    mu <- mu_update(Sigma_s, lambda_0, sigma2, J)
-    sigma2 <- sigma2_update(mu, lambda_0, Sigma_s, J, a_sigma, b_sigma)
-    tau_all <- tau_update(lambda_0, lambda, J, s, a_tau, b_tau, c_tau, d_tau, p_0, type)
-    tau <- tau_all$tau
-
-    # 2. Update beta [MH NR]
-    #beta_all <- beta_MH_NR(df = df_curr, beta, beta_prior_prec, bp, cprop_beta, beta_count)
-    beta_all <- beta_MH_NR_vec(df_curr,
-                                beta,
-                                beta_prior_prec,
-                                bp,
-                                cprop_beta,
-                                beta_count)
-    beta <- beta_all$beta
-    beta_count <- beta_all$beta_count
-
-    if(bp_0 > 0) {
-      #beta_0_all <- beta_MH_NR(df = df_hist, beta = beta_0, bp = bp_0,
-      #                          cprop_beta = cprop_beta_0, beta_count = beta_0_count)
-      beta_0_all <- beta_MH_NR_vec(df_hist,
-                                    beta_0,
-                                    beta_0_prior_prec,
-                                    bp = bp_0,
-                                    cprop_beta = cprop_beta_0,
-                                    beta_count = beta_0_count)
-      beta_0 <- beta_0_all$beta
-      beta_0_count <- beta_0_all$beta_count
-    }
-
-    # 3. Update lambda_0, propose new lambda_0 from conditional [MH]
-    #   conjugate posterior
-    df_lambda_0 <- lambda_0_MH_cp(df_hist, Y_0, I_0, X_0, s,
-                                   beta_0, mu, sigma2,  lambda, lambda_0, tau,
-                                   bp_0, J, clam, a_lam = a_lambda, b_lam = b_lambda,
-                                   lambda_0_count, lambda_0_move)
-    lambda_0 <- df_lambda_0$lambda_0
-    lambda_0_move <- df_lambda_0$lambda_0_move
-    lambda_0_count <- df_lambda_0$lambda_0_count
-    df_hist <- df_lambda_0$df_hist
-
-    # 4. Update lambda, propose new lambda from conditional
-    #   conjugate posterior [MH]
-    df_lambda <- lambda_MH_cp(df_hist, df_curr, Y, I, X, s,
-                               beta, beta_0, mu, sigma2, lambda, lambda_0, tau,
-                               bp, bp_0, J, a_lam = a_lambda, b_lam = b_lambda, lambda_move,
-                               lambda_count, alpha)
-    lambda <- df_lambda$lambda
-    lambda_move <- df_lambda$lambda_move
-    lambda_count <- df_lambda$lambda_count
-    df_curr <- df_lambda$df_curr
-
-    # 5. Shuffle split point locations (accept/reject) [MH]
-    if (J > 0) {
-      swap_df <- shuffle_split_point_location(df_hist, df_curr, Y_0, I_0, X_0,
-                                               lambda_0, beta_0, Y, I, X, lambda, beta, s, J, bp_0, bp,
-                                               clam, maxSj)
-      s <- swap_df$s
-      Sigma_s <- swap_df$Sigma_s
-      df_hist <- swap_df$df_hist
-      df_curr <- swap_df$df_curr
-    }
-
-    # 6. Propose a birth/death of a split point via a reversible jump step [MH-Green]
-    # This will update lambda_0, lambda, tau, s and J (via weighted mean) if accepted
-    rjmcmc_out <- J_RJMCMC(df_hist, df_curr, Y, Y_0, I, I_0, X, X_0,
-                           lambda, lambda_0, beta, beta_0,
-                           mu, sigma2, tau, s, J, Jmax,
-                           bp, bp_0,
-                           clam,
-                           a_tau, b_tau, c_tau, d_tau, type,
-                           p_0, phi, pi_b, maxSj)
-
-    J <- rjmcmc_out$J
-    s <- rjmcmc_out$s
-    lambda <- rjmcmc_out$lambda
-    lambda_0 <- rjmcmc_out$lambda_0
-    Sigma_s <- rjmcmc_out$Sigma_s
-    if(type %in% c("uni", "mix")) {
-      tau <- rjmcmc_out$tau
-    }
-    df_hist <- rjmcmc_out$df_hist
-    df_curr <- rjmcmc_out$df_curr
-
-
-    # 7. Save parameter values of iteration i
-
-    if(i > warmup_iter){
-      samples[j, 1:bp] <- beta
-
-      if(bp_0 > 0) {
-        samples[j, (bp + 1):(bp + bp_0)] <- beta_0
-      }
-
-      samples[j, bp + bp_0 + 1] <- J
-      samples[j, bp + bp_0 + 2] <- mu
-      samples[j, bp + bp_0 + 3] <- sigma2
-
-      out_lambda[j, 1:(length(lambda))] <- lambda
-      out_lambda_0[j, 1:(length(lambda_0))] <- lambda_0
-      out_s[j, 1:(length(s))] <- s
-      out_tau[j, 1:(length(tau))] <- tau
-
-      #Grid of baseline hazards for shrunk estimate
-      indx <- findInterval(time_grid, s, left.open = T)
-      lambda_s <- lambda[indx]
-      ## 1) ARRAY
-      ## out_slam[j,] <- lambda_s
-      writeBin(lambda_s, conn3$cnd_blh)
-
-      if(bp > 1 && !CntlOnly){
-        #G-computation for marginal hazard ratio
-        #draw from Dirichlet
-        w_sxn_ts <- w_sxn_trt[j,]
-        lhaz_up_trt <- log_haz_inroutine(trtAX,
-                                          beta,
-                                          lambda_s,
-                                          time_grid,
-                                          w_sxn_ts)
-        ## 2) ARRAY
-        ## lhaz_bar_trt[j,] <- lhaz_up_trt
-        writeBin(lhaz_up_trt, conn3$mgnl_haz1)
-
-        w_sxn_cs <- w_sxn_con[j,]
-        beta_c <- beta[-1]
-        lhaz_up_con <- log_haz_inroutine(conAX,
-                                          beta_c,
-                                          lambda_s,
-                                          time_grid,
-                                          w_sxn_cs)
-        ## 3) ARRAY
-        ## lhaz_bar_con[j,] <- lhaz_up_con
-        writeBin(lhaz_up_con, conn3$mgnl_haz0)
-      }
-
-      # for
-      j <- j + 1
-    }
-
-  }
-
-  ## Close binary files
-  lapply(conn3, close)
-
-  ### END MCMC/MH loop
-
-
-  ## Begin summary statistic block
-  ## open binary files for reading
-  conn3 <- list()
-  ## Begin summary statistic block
-  ## open binary files for reading
-  if(bp <= 1 || CntlOnly)
-    if(file.exists(fnm_cnd_blh)) 
-      conn3$cnd_blh <- file(fnm_cnd_blh, "rb")
-
-  if(bp > 1 && !CntlOnly){
-      all_files <- file.exists(fnm_mgnl_haz0) &&
-                   file.exists(fnm_mgnl_haz1) &&
-                   file.exists(fnm_cnd_blh)
-      if(all_files) 
-      {
-	  conn3 <- list(
-                         cnd_blh = file(fnm_cnd_blh, "rb"),
-                         mgnl_haz0 = file(fnm_mgnl_haz0, "rb"),
-                         mgnl_haz1 = file(fnm_mgnl_haz1, "rb")
-	               )
-      }
-  }
-
-  ## compute summary statistics
-    ## matrix(...) is   max_grid x iter  matrix
-
-  ## find TOS at 25%, 50%, 75% information time
-  Y.I <- cbind(Y/stdz,I)
-  Y.f <- Y.I[order(Y),]
-  Y.f <- cbind(Y.f[,1],cumsum(Y.f[,2])/sum(Y.f[,2]))
-  T.if <- c(sapply(0.25*(1:3), FUN=function(x, yf)yf[max(which(yf[,2]<=x)),1], yf=Y.f), max(Y)/stdz)
-
-  ## 1. RESCALE HAZARD if standardise=TRUE
-  ## 2. USE MEDIAN  in all cases
-
-  ## case 1,2: X is just tretament OR  X is treatment + other covariates but G_check==0
-  ## e.g.  G_compute==FALSE
+    handlers(
+      handler_progress(
+        format = "[:bar] :percent | :message"
+      ),
+      global = TRUE
+    )
     
-  ## NOTE: in either case, when G_check==0 or 1, we can store the conditional hazard and
-  ## survival functions in surv_dat. Thus this first block gets done in either case. 
+    with_progress({
+        
+      p <- progressor(steps = iter_total)
+        
+      chain_out <- future_lapply(
+        X = chain_ids,
+        FUN = function(k) {
+          GibbsMH_wborrow_chain(
+            input_list = input_list,
+            initial_states = warmup_state,
+            iter = iter,
+            is_warmup = FALSE,
+            k = k,
+            p = p
+          )
+        },
+        future.seed = TRUE,
+        future.scheduling = structure(TRUE, ordering = "random")
+      )
+    })
+  }
 
-  ## NOTE: in the following '0' means control group whereas above '0' means historical data
-  ## so just keep that in mind
-    
-  ## 1st line: cumsum over time grid per row
-  ## 2nd line: mean over iterations, per column
-  ## 3rd line: ci over iterations, per column
-  cnd_haz_0 <- matrix(readBin(conn3$cnd_blh, what="double", n=max_grid*iter), max_grid, iter)*stdz
-  med_cnd_haz_0 <- apply(cnd_haz_0, 1, FUN=median)
-  CI_cnd_haz_0 <- t(apply(cnd_haz_0, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))
+  ## Check explicitly for errors returned by child processes.
+  child_errors <- vapply(
+    chain_out,
+    inherits,
+    logical(1),
+    what = "try-error"
+  )
 
-  cnd_surv_0 <- exp(-apply(cnd_haz_0*DX(time_grid), 2, FUN=cumsum))
-  med_cnd_surv_0 <- apply(cnd_surv_0, 1, FUN=median)
-  CI_cnd_surv_0 <- t(apply(cnd_surv_0, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))
-  
-  cnd_haz_1 <- t(exp(samples[,nmsB[1]])*t(cnd_haz_0))
-  med_cnd_haz_1 <- apply(cnd_haz_1, 1, FUN=median)
-  CI_cnd_haz_1 <- t(apply(cnd_haz_1, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))
-  
-  cnd_surv_1 <- exp(-apply(cnd_haz_1*DX(time_grid), 2, FUN=cumsum))
-  med_cnd_surv_1 <- apply(cnd_surv_1, 1, FUN=median)
-  CI_cnd_surv_1 <- t(apply(cnd_surv_1, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))
+  if (any(child_errors)) {
+    stop(
+      "At least one parallel MCMC chain failed. ",
+      "Inspect the child-process error output."
+    )
+  }
 
-  t_dlt <- diff(time_grid/stdz)[1]*40
+  ## ---------------------------------------------------------------
+  ## Gather retained MCMC state samples from all child chains.
+  ## Row order is chain 1 draws, chain 2 draws, ..., chain n draws.
+  ## ---------------------------------------------------------------
+  samples <- do.call(
+    rbind,
+    lapply(chain_out, function(z) z$other_outputs$samples)
+  )
 
-  ## smooth with ultra fine bandwidth (just larger than the grid spacing) to wipe out blips
-  surv_dat <- data.frame(time = time_grid/stdz,
-                           
-                         med_cnd_haz_0 = med_cnd_haz_0,
-                         L_cnd_haz_0 = ksmooth(x=time_grid/stdz, y=CI_cnd_haz_0[,1], bandwidth=t_dlt, kernel="normal")$y,
-                         U_cnd_haz_0 = ksmooth(x=time_grid/stdz, y=CI_cnd_haz_0[,2], bandwidth=t_dlt, kernel="normal")$y,
-                          
-                         med_cnd_surv_0 = med_cnd_surv_0,
-                         L_cnd_surv_0 = ksmooth(x=time_grid/stdz, y=CI_cnd_surv_0[,1], bandwidth=t_dlt, kernel="normal")$y,
-                         U_cnd_surv_0 = ksmooth(x=time_grid/stdz, y=CI_cnd_surv_0[,2], bandwidth=t_dlt, kernel="normal")$y,
-                         
-                         med_cnd_haz_1 = med_cnd_haz_1,
-                         L_cnd_haz_1 = ksmooth(x=time_grid/stdz, y=CI_cnd_haz_1[,1], bandwidth=t_dlt, kernel="normal")$y,
-                         U_cnd_haz_1 = ksmooth(x=time_grid/stdz, y=CI_cnd_haz_1[,2], bandwidth=t_dlt, kernel="normal")$y,
-                         
-                         med_cnd_surv_1 = med_cnd_surv_1,
-                         L_cnd_surv_1 = ksmooth(x=time_grid/stdz, y=CI_cnd_surv_1[,1], bandwidth=t_dlt, kernel="normal")$y,
-                         U_cnd_surv_1 = ksmooth(x=time_grid/stdz, y=CI_cnd_surv_1[,2], bandwidth=t_dlt, kernel="normal")$y)
+  out_lambda <- do.call(
+    rbind,
+    lapply(chain_out, function(z) z$other_outputs$lambda)
+  )
+
+  out_lambda_0 <- do.call(
+    rbind,
+    lapply(chain_out, function(z) z$other_outputs$lambda_0)
+  )
+
+  out_s <- do.call(
+    rbind,
+    lapply(chain_out, function(z) z$other_outputs$s)
+  )
+
+  out_tau <- do.call(
+    rbind,
+    lapply(chain_out, function(z) z$other_outputs$tau)
+  )
+
+  ## Retain final states and proposal counters by chain. Since all
+  ## chains have independent trajectories after warmup, a single final
+  ## state or pooled proposal counter is not generally meaningful.
+  state_current_vals <- lapply(
+    chain_out,
+    function(z) z$state_current_vals
+  )
+
+  lambda_0_move <- vapply(
+    state_current_vals,
+    function(z) z$lambda_0_move,
+    numeric(1)
+  )
+
+  lambda_move <- vapply(
+    state_current_vals,
+    function(z) z$lambda_move,
+    numeric(1)
+  )
+
+  beta_move <- vapply(
+    state_current_vals,
+    function(z) z$beta_count,
+    numeric(1)
+  )
+
+  if (bp_0 > 0) {
+    beta_0_move <- vapply(
+      state_current_vals,
+      function(z) z$beta_0_count,
+      numeric(1)
+    )
+  }
+
+  ## ---------------------------------------------------------------
+  ## Construct final merged binary-file names.
+  ##
+  ## These match the original one-file-per-output convention expected
+  ## by the downstream summary code.
+  ## ---------------------------------------------------------------
+  fnm_cnd_haz_0_final <- fnm_cnd_haz_0 %,% "_" %,% sfx %,% "_wb.bin"
+  fnm_cnd_cumHz_0_final <- fnm_cnd_cumHz_0 %,% "_" %,% sfx %,% "_wb.bin"
+
+  fnm_lml_mgnl_surv_0_final <- fnm_lml_mgnl_surv_0 %,% "_" %,% sfx %,% "_wb.bin"
+  fnm_lml_mgnl_surv_1_final <- fnm_lml_mgnl_surv_1 %,% "_" %,% sfx %,% "_wb.bin"
+
+  fnm_mgnl_haz_0_final <- fnm_mgnl_haz_0 %,% "_" %,% sfx %,% "_wb.bin"
+  fnm_mgnl_haz_1_final <- fnm_mgnl_haz_1 %,% "_" %,% sfx %,% "_wb.bin"
+
+  merged_binary_files <-
+    c(fnm_cnd_haz_0_final,
+      fnm_cnd_cumHz_0_final,
+      fnm_lml_mgnl_surv_0_final,
+      fnm_lml_mgnl_surv_1_final,
+      fnm_mgnl_haz_0_final,
+      fnm_mgnl_haz_1_final)
+
+  on.exit({
+    if (!keep_bin_files) {
+      paths_to_remove <- unique(
+        merged_binary_files[file.exists(merged_binary_files)]
+      )
+
+      if (length(paths_to_remove) > 0) {
+        unlink(paths_to_remove)
+      }
+      unlink(dir_name, recursive=TRUE, force=TRUE)
+    }
+  }, add = TRUE)
+
+  ## ---------------------------------------------------------------
+  ## Append all chain files, in chain-number order, into a final file.
+  ## ---------------------------------------------------------------
+  append_binary_files <- function(destination, sources) {
+
+    if (file.exists(destination)) {
+      unlink(destination)
+    }
+
+    for (source in sources) {
+
+      if (!file.exists(source)) {
+        stop(
+          "Expected child-chain binary file was not found: ",
+          source
+        )
+      }
+
+      append_success <- file.append(destination, source)
+
+      if (!append_success) {
+        stop(
+          "Could not append child-chain binary file: ",
+          source
+        )
+      }
+    }
+
+    invisible(destination)
+  }
+
+  child_fnms <- lapply(
+    chain_out,
+    function(z) z$other_outputs$fnms
+  )
+
+  append_binary_files(
+    destination = fnm_cnd_haz_0_final,
+    sources = vapply(
+      child_fnms,
+      function(x) unname(x["cnd_haz_0"]),
+      character(1)
+    )
+  )
+
+  append_binary_files(
+    destination = fnm_cnd_cumHz_0_final,
+    sources = vapply(
+      child_fnms,
+      function(x) unname(x["cnd_cumHz_0"]),
+      character(1)
+    )
+  )
+
+  if (bp > 1 && !CntlOnly) {
+
+    append_binary_files(
+      destination = fnm_lml_mgnl_surv_0_final,
+      sources = vapply(
+        child_fnms,
+        function(x) unname(x["lml_mgnl_surv_0"]),
+        character(1)
+      )
+    )
+
+    append_binary_files(
+      destination = fnm_lml_mgnl_surv_1_final,
+      sources = vapply(
+        child_fnms,
+        function(x) unname(x["lml_mgnl_surv_1"]),
+        character(1)
+      )
+    )
+
+    append_binary_files(
+      destination = fnm_mgnl_haz_0_final,
+      sources = vapply(
+        child_fnms,
+        function(x) unname(x["mgnl_haz_0"]),
+        character(1)
+      )
+    )
+
+    append_binary_files(
+      destination = fnm_mgnl_haz_1_final,
+      sources = vapply(
+        child_fnms,
+        function(x) unname(x["mgnl_haz_1"]),
+        character(1)
+      )
+    )
+  }
+
+  ## Remove child-specific files after merging unless requested to
+  ## retain them for diagnostic or debugging purposes.
+  if (!keep_bin_files) {
+
+    child_binary_files <- unlist(
+      lapply(
+        child_fnms,
+        function(x) unname(x)
+      ),
+      use.names = FALSE
+    )
+
+    child_binary_files <- child_binary_files[
+      file.exists(child_binary_files)
+    ]
+
+    if (length(child_binary_files) > 0) {
+      unlink(child_binary_files)
+    }
+  }
+
+  ## ---------------------------------------------------------------
+  ## Open final merged files for posterior summary calculations.
+  ## ---------------------------------------------------------------
+  conn3 <- list(
+    cnd_haz_0 = file(fnm_cnd_haz_0_final, "rb"),
+    cnd_cumHz_0 = file(fnm_cnd_cumHz_0_final, "rb")
+  )
+
+  if (bp > 1 && !CntlOnly) {
+    conn3$lml_mgnl_surv_0 <- file(fnm_lml_mgnl_surv_0_final, "rb")
+    conn3$lml_mgnl_surv_1 <- file(fnm_lml_mgnl_surv_1_final, "rb")
+    conn3$mgnl_haz_0 <- file(fnm_mgnl_haz_0_final, "rb")
+    conn3$mgnl_haz_1 <- file(fnm_mgnl_haz_1_final, "rb")
+  }
+
+  on.exit(
+    invisible(lapply(conn3, function(con) {
+      if (inherits(con, "connection")) {
+        try(close(con), silent = TRUE)
+      }
+    })),
+    add = TRUE
+  )
+
+  ## ---------------------------------------------------------------
+  ## Posterior summaries
+  ## ---------------------------------------------------------------
+  Y.I <- cbind(Y / stdz, I)
+  Y.f <- Y.I[order(Y), , drop = FALSE]
+  Y.f <- cbind(Y.f[, 1], cumsum(Y.f[, 2]) / sum(Y.f[, 2]))
+
+  T.if <- c(
+    sapply(
+      0.25 * (1:3),
+      FUN = function(x, yf) {
+        yf[max(which(yf[, 2] <= x)), 1]
+      },
+      yf = Y.f
+    ),
+    max(Y) / stdz
+  )
+
+  cnd_haz_0 <- matrix(
+    readBin(
+      conn3$cnd_haz_0,
+      what = "double",
+      n = max_grid * iter_total
+    ),
+    nrow = max_grid,
+    ncol = iter_total
+  )
+
+  med_cnd_haz_0 <- apply(cnd_haz_0, 1, median)
+
+  CI_cnd_haz_0 <- t(
+    apply(cnd_haz_0, 1, function(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    })
+  )
+
+  cnd_cumHz_0 <- matrix(
+    readBin(
+      conn3$cnd_cumHz_0,
+      what = "double",
+      n = max_grid * iter_total
+    ),
+    nrow = max_grid,
+    ncol = iter_total
+  )
+
+  med_cnd_cumHz_0 <- apply(cnd_cumHz_0, 1, median)
+
+  CI_cnd_cumHz_0 <- t(
+    apply(cnd_cumHz_0, 1, function(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    })
+  )
+
+  cnd_surv_0 <- exp(-cnd_cumHz_0)
+
+  med_cnd_surv_0 <- apply(cnd_surv_0, 1, median)
+
+  CI_cnd_surv_0 <- t(
+    apply(cnd_surv_0, 1, function(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    })
+  )
+
+  bw <- 50 * diff(time_grid)[1]
+
+  surv_dat <- data.frame(
+    time = time_grid / stdz,
+
+    med_cnd_haz_0 = med_cnd_haz_0 * stdz,
+    L_cnd_haz_0 = ksmooth(
+      x = time_grid,
+      y = CI_cnd_haz_0[, 1],
+      bandwidth = bw,
+      kernel = "normal"
+    )$y * stdz,
+    U_cnd_haz_0 = ksmooth(
+      x = time_grid,
+      y = CI_cnd_haz_0[, 2],
+      bandwidth = bw,
+      kernel = "normal"
+    )$y * stdz,
+
+    med_cnd_cumHz_0 = med_cnd_cumHz_0,
+    L_cnd_cumHz_0 = ksmooth(
+      x = time_grid,
+      y = CI_cnd_cumHz_0[, 1],
+      bandwidth = bw,
+      kernel = "normal"
+    )$y,
+    U_cnd_cumHz_0 = ksmooth(
+      x = time_grid,
+      y = CI_cnd_cumHz_0[, 2],
+      bandwidth = bw,
+      kernel = "normal"
+    )$y,
+
+    med_cnd_surv_0 = med_cnd_surv_0,
+    L_cnd_surv_0 = ksmooth(
+      x = time_grid,
+      y = CI_cnd_surv_0[, 1],
+      bandwidth = bw,
+      kernel = "normal"
+    )$y,
+    U_cnd_surv_0 = ksmooth(
+      x = time_grid,
+      y = CI_cnd_surv_0[, 2],
+      bandwidth = bw,
+      kernel = "normal"
+    )$y
+  )
+
+  if (!CntlOnly) {
+
+    nmsB <- dimnames(X)[[2]]
+
+    cnd_haz_1 <- t(
+      exp(samples[, nmsB[1]]) * t(cnd_haz_0)
+    )
+
+    med_cnd_haz_1 <- apply(cnd_haz_1, 1, median)
+
+    CI_cnd_haz_1 <- t(
+      apply(cnd_haz_1, 1, function(x) {
+        z <- ci(x)
+        c(z$CI_low, z$CI_high)
+      })
+    )
+
+    cnd_cumHz_1 <- t(
+      exp(samples[, nmsB[1]]) * t(cnd_cumHz_0)
+    )
+
+    med_cnd_cumHz_1 <- apply(cnd_cumHz_1, 1, median)
+
+    CI_cnd_cumHz_1 <- t(
+      apply(cnd_cumHz_1, 1, function(x) {
+        z <- ci(x)
+        c(z$CI_low, z$CI_high)
+      })
+    )
+
+    cnd_surv_1 <- exp(-cnd_cumHz_1)
+
+    med_cnd_surv_1 <- apply(cnd_surv_1, 1, median)
+
+    CI_cnd_surv_1 <- t(
+      apply(cnd_surv_1, 1, function(x) {
+        z <- ci(x)
+        c(z$CI_low, z$CI_high)
+      })
+    )
+
+    surv_dat$med_cnd_haz_1 <- med_cnd_haz_1 * stdz
+    surv_dat$L_cnd_haz_1 <- ksmooth(
+      x = time_grid,
+      y = CI_cnd_haz_1[, 1],
+      bandwidth = bw,
+      kernel = "normal"
+    )$y * stdz
+    surv_dat$U_cnd_haz_1 <- ksmooth(
+      x = time_grid,
+      y = CI_cnd_haz_1[, 2],
+      bandwidth = bw,
+      kernel = "normal"
+    )$y * stdz
+
+    surv_dat$med_cnd_cumHz_1 <- med_cnd_cumHz_1
+    surv_dat$L_cnd_cumHz_1 <- ksmooth(
+      x = time_grid,
+      y = CI_cnd_cumHz_1[, 1],
+      bandwidth = bw,
+      kernel = "normal"
+    )$y
+    surv_dat$U_cnd_cumHz_1 <- ksmooth(
+      x = time_grid,
+      y = CI_cnd_cumHz_1[, 2],
+      bandwidth = bw,
+      kernel = "normal"
+    )$y
+
+    surv_dat$med_cnd_surv_1 <- med_cnd_surv_1
+    surv_dat$L_cnd_surv_1 <- ksmooth(
+      x = time_grid,
+      y = CI_cnd_surv_1[, 1],
+      bandwidth = bw,
+      kernel = "normal"
+    )$y
+    surv_dat$U_cnd_surv_1 <- ksmooth(
+      x = time_grid,
+      y = CI_cnd_surv_1[, 2],
+      bandwidth = bw,
+      kernel = "normal"
+    )$y
+  }
+
+  ## ---------------------------------------------------------------
+  ## G-computation posterior summaries
+  ## ---------------------------------------------------------------
   MTE_dens_dfs <- NULL
 
+  if (bp > 1 && !CntlOnly) {
 
-  ## case 3: G_compute is TRUE so, necessarily, X is treatment + other covariantes
-  ## We can add the 'mgnl' hazard and survival function to the (already existing) surv_dat data.frame
-  ## We can compute the marginal treatment effect densities for information fractions 0.25*(1:4) and
-  ## put them in MTE_dens_dfs
-  if(bp > 1 && !CntlOnly)
-  {
-      log_mgnl_haz_0 <- matrix(readBin(conn3$mgnl_haz0, what = "double", n = max_grid * iter), max_grid, iter) * stdz
-      log_mgnl_haz_1 <- matrix(readBin(conn3$mgnl_haz1, what = "double", n = max_grid * iter), max_grid, iter) * stdz
+    mgnl_haz_0 <- matrix(
+      readBin(
+        conn3$mgnl_haz_0,
+        what = "double",
+        n = max_grid * iter_total
+      ),
+      nrow = max_grid,
+      ncol = iter_total
+    )
 
-      ## marginal hazard from logged marginal hazard per sample
-      mgnl_haz_0 <- exp(log_mgnl_haz_0)
-      mgnl_haz_1 <- exp(log_mgnl_haz_1)
+    lml_mgnl_surv_0 <- matrix(
+      readBin(
+        conn3$lml_mgnl_surv_0,
+        what = "double",
+        n = max_grid * iter_total
+      ),
+      nrow = max_grid,
+      ncol = iter_total
+    )
 
-      ## lines 1-6: same as above for survival function
-      med_mgnl_haz_0 <- apply(mgnl_haz_0, 1, FUN=median)
-      CI_mgnl_haz_0 <- t(apply(mgnl_haz_0, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))
+    mgnl_cumHz_0 <- exp(lml_mgnl_surv_0)
+    mgnl_surv_0 <- exp(-mgnl_cumHz_0)
 
-      mgnl_surv_0 <- exp(-apply(mgnl_haz_0*DX(time_grid), 2, FUN=cumsum))
-      med_mgnl_surv_0 <- apply(mgnl_surv_0, 1, FUN=median)
-      CI_mgnl_surv_0 <- t(apply(mgnl_surv_0, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))
+    med_mgnl_haz_0 <- apply(mgnl_haz_0, 1, median)
+    med_mgnl_cumHz_0 <- apply(mgnl_cumHz_0, 1, median)
+    med_mgnl_surv_0 <- apply(mgnl_surv_0, 1, median)
 
-      ## lines 1-6: same as above for survival function
-      med_mgnl_haz_1 <- apply(mgnl_haz_1, 1, FUN=median)
-      CI_mgnl_haz_1 <- t(apply(mgnl_haz_1, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))
+    CI_mgnl_haz_0 <- t(apply(mgnl_haz_0, 1, function(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    }))
 
-      mgnl_surv_1 <- exp(-apply(mgnl_haz_1*DX(time_grid), 2, FUN=cumsum))
-      med_mgnl_surv_1 <- apply(mgnl_surv_1, 1, FUN=median)
-      CI_mgnl_surv_1 <- t(apply(mgnl_surv_1, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))
+    CI_mgnl_cumHz_0 <- t(apply(mgnl_cumHz_0, 1, function(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    }))
 
-      mgnl_trt_eff <- log_mgnl_haz_1 - log_mgnl_haz_0
-      med_mgnl_trt_eff <- apply(mgnl_trt_eff, 1, FUN=median)
-      CI_mgnl_trt_eff <- t(apply(mgnl_trt_eff, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))      
+    CI_mgnl_surv_0 <- t(apply(mgnl_surv_0, 1, function(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    }))
 
-      surv_dat$med_mgnl_haz_0 <-  med_mgnl_haz_0
-      surv_dat$L_mgnl_haz_0 <-  ksmooth(x = time_grid/stdz, y=CI_mgnl_haz_0[,1], bandwidth=t_dlt, kernel="normal")$y
-      surv_dat$U_mgnl_haz_0 <-  ksmooth(x = time_grid/stdz, y=CI_mgnl_haz_0[,2], bandwidth=t_dlt, kernel="normal")$y
-      
-      surv_dat$med_mgnl_surv_0 <- med_mgnl_surv_0
-      surv_dat$L_mgnl_surv_0 <- ksmooth(x = time_grid/stdz, y=CI_mgnl_surv_0[,1], bandwidth=t_dlt, kernel="normal")$y
-      surv_dat$U_mgnl_surv_0 <- ksmooth(x = time_grid/stdz, y=CI_mgnl_surv_0[,2], bandwidth=t_dlt, kernel="normal")$y
-      
-      surv_dat$med_mgnl_haz_1 <-  med_mgnl_haz_1
-      surv_dat$L_mgnl_haz_1 <-  ksmooth(x = time_grid/stdz, y=CI_mgnl_haz_1[,1], bandwidth=t_dlt, kernel="normal")$y
-      surv_dat$U_mgnl_haz_1 <-  ksmooth(x = time_grid/stdz, y=CI_mgnl_haz_1[,2], bandwidth=t_dlt, kernel="normal")$y
-      
-      surv_dat$med_mgnl_surv_1 <- med_mgnl_surv_1
-      surv_dat$L_mgnl_surv_1 <- ksmooth(x = time_grid/stdz, y=CI_mgnl_surv_1[,1], bandwidth=t_dlt, kernel="normal")$y
-      surv_dat$U_mgnl_surv_1 <- ksmooth(x = time_grid/stdz, y=CI_mgnl_surv_1[,2], bandwidth=t_dlt, kernel="normal")$y
-      
-      surv_dat$med_mgnl_trt_eff <- med_mgnl_trt_eff
-      surv_dat$L_mgnl_trt_eff <- ksmooth(x = time_grid/stdz, y=CI_mgnl_trt_eff[,1], bandwidth=t_dlt, kernel="normal")$y
-      surv_dat$U_mgnl_trt_eff <- ksmooth(x = time_grid/stdz, y=CI_mgnl_trt_eff[,2], bandwidth=t_dlt, kernel="normal")$y
-      
-      MTE_dens_dfs <- list()
-      for (k in 1:4)
-      {
-          T.idx <- T.if[k]
-          idx <- sum(time_grid/stdz <= T.idx)
-          B <- mgnl_haz_1[idx,] - mgnl_haz_0[idx,]
-          dens <- density(B)
-          MTE_dens_dfs[[k]] <- data.frame(x=dens$x, y=dens$y)
-      }
+    mgnl_haz_1 <- matrix(
+      readBin(
+        conn3$mgnl_haz_1,
+        what = "double",
+        n = max_grid * iter_total
+      ),
+      nrow = max_grid,
+      ncol = iter_total
+    )
+
+    lml_mgnl_surv_1 <- matrix(
+      readBin(
+        conn3$lml_mgnl_surv_1,
+        what = "double",
+        n = max_grid * iter_total
+      ),
+      nrow = max_grid,
+      ncol = iter_total
+    )
+
+    mgnl_cumHz_1 <- exp(lml_mgnl_surv_1)
+    mgnl_surv_1 <- exp(-mgnl_cumHz_1)
+
+    med_mgnl_haz_1 <- apply(mgnl_haz_1, 1, median)
+    med_mgnl_cumHz_1 <- apply(mgnl_cumHz_1, 1, median)
+    med_mgnl_surv_1 <- apply(mgnl_surv_1, 1, median)
+
+    CI_mgnl_haz_1 <- t(apply(mgnl_haz_1, 1, function(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    }))
+
+    CI_mgnl_cumHz_1 <- t(apply(mgnl_cumHz_1, 1, function(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    }))
+
+    CI_mgnl_surv_1 <- t(apply(mgnl_surv_1, 1, function(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    }))
+
+    mgnl_trt_eff <- lml_mgnl_surv_1 - lml_mgnl_surv_0
+
+    med_mgnl_trt_eff <- apply(mgnl_trt_eff, 1, median)
+
+    CI_mgnl_trt_eff <- t(apply(mgnl_trt_eff, 1, function(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    }))
+
+    surv_dat$med_mgnl_haz_0 <- med_mgnl_haz_0 * stdz
+    surv_dat$L_mgnl_haz_0 <- ksmooth(
+      time_grid, CI_mgnl_haz_0[, 1], bandwidth = bw, kernel = "normal"
+    )$y * stdz
+    surv_dat$U_mgnl_haz_0 <- ksmooth(
+      time_grid, CI_mgnl_haz_0[, 2], bandwidth = bw, kernel = "normal"
+    )$y * stdz
+
+    surv_dat$med_mgnl_cumHz_0 <- med_mgnl_cumHz_0
+    surv_dat$L_mgnl_cumHz_0 <- ksmooth(
+      time_grid, CI_mgnl_cumHz_0[, 1], bandwidth = bw, kernel = "normal"
+    )$y
+    surv_dat$U_mgnl_cumHz_0 <- ksmooth(
+      time_grid, CI_mgnl_cumHz_0[, 2], bandwidth = bw, kernel = "normal"
+    )$y
+
+    surv_dat$med_mgnl_surv_0 <- med_mgnl_surv_0
+    surv_dat$L_mgnl_surv_0 <- ksmooth(
+      time_grid, CI_mgnl_surv_0[, 1], bandwidth = bw, kernel = "normal"
+    )$y
+    surv_dat$U_mgnl_surv_0 <- ksmooth(
+      time_grid, CI_mgnl_surv_0[, 2], bandwidth = bw, kernel = "normal"
+    )$y
+
+    surv_dat$med_mgnl_haz_1 <- med_mgnl_haz_1 * stdz
+    surv_dat$L_mgnl_haz_1 <- ksmooth(
+      time_grid, CI_mgnl_haz_1[, 1], bandwidth = bw, kernel = "normal"
+    )$y * stdz
+    surv_dat$U_mgnl_haz_1 <- ksmooth(
+      time_grid, CI_mgnl_haz_1[, 2], bandwidth = bw, kernel = "normal"
+    )$y * stdz
+
+    surv_dat$med_mgnl_cumHz_1 <- med_mgnl_cumHz_1
+    surv_dat$L_mgnl_cumHz_1 <- ksmooth(
+      time_grid, CI_mgnl_cumHz_1[, 1], bandwidth = bw, kernel = "normal"
+    )$y
+    surv_dat$U_mgnl_cumHz_1 <- ksmooth(
+      time_grid, CI_mgnl_cumHz_1[, 2], bandwidth = bw, kernel = "normal"
+    )$y
+
+    surv_dat$med_mgnl_surv_1 <- med_mgnl_surv_1
+    surv_dat$L_mgnl_surv_1 <- ksmooth(
+      time_grid, CI_mgnl_surv_1[, 1], bandwidth = bw, kernel = "normal"
+    )$y
+    surv_dat$U_mgnl_surv_1 <- ksmooth(
+      time_grid, CI_mgnl_surv_1[, 2], bandwidth = bw, kernel = "normal"
+    )$y
+
+    surv_dat$med_mgnl_trt_eff <- med_mgnl_trt_eff
+    surv_dat$L_mgnl_trt_eff <- ksmooth(
+      time_grid, CI_mgnl_trt_eff[, 1], bandwidth = bw, kernel = "normal"
+    )$y
+    surv_dat$U_mgnl_trt_eff <- ksmooth(
+      time_grid, CI_mgnl_trt_eff[, 2], bandwidth = bw, kernel = "normal"
+    )$y
+
+    MTE_dens_dfs <- vector("list", 4)
+
+    for (k in 1:4) {
+
+      T.idx <- T.if[k]
+      idx <- sum(time_grid / stdz <= T.idx)
+
+      B <- mgnl_trt_eff[idx, ]
+      dens <- density(B)
+
+      MTE_dens_dfs[[k]] <- data.frame(
+        x = dens$x,
+        y = dens$y
+      )
+    }
   }
 
-  ## Close binary files
-      ## taken care of by instance of handler on first 
-      ## open for writing?
-  ##
-  ## End summary statistics block
+  ## ---------------------------------------------------------------
+  ## Remove unused trailing columns from variable-dimension outputs.
+  ## ---------------------------------------------------------------
+  s_nna <- apply(out_s, 2, function(x) sum(is.na(x)))
+  out_s <- out_s[, s_nna < iter_total, drop = FALSE]
+  nSm1 <- ncol(out_s) - 1L
 
-  ## reorganize some of the output
-  ## these are all samples of the state variables
-  ## prior to snapping the hazards to the base grid
-  ## the plot method can plot a trace on any given column of
-  ## samples
-
-  ## output QC
-  ## drop any columns which contain all NA
-  ## -- these will be at the end
-  ## then out_s is the correct dimension
-  ## name them s_0, ..., s_nSm1  
-  s_nna <- apply(out_s, 2, \(x)sum(is.na(x)))
-  out_s <- out_s[,(s_nna < iter)]
-  nSm1 <- ncol(out_s) - 1
-  
-  ## drop any columns which contain all NA
-  ## -- these will be at the end
-  ## then out_lambda is the correct dimension
-  ## name them lambda_1, ..., s_nL
-  l_nna <- apply(out_lambda, 2, \(x)sum(is.na(x)))
-  out_lambda <- out_lambda[,(l_nna < iter)]
+  l_nna <- apply(out_lambda, 2, function(x) sum(is.na(x)))
+  out_lambda <- out_lambda[, l_nna < iter_total, drop = FALSE]
   nL <- ncol(out_lambda)
 
-  ## drop any columns which contain all NA
-  ## -- these will be at the end
-  ## then out_lambda_0 is the correct dimension
-  ## name them lambda_0_1, ..., lambda_0_nL0
-  l0_nna <- apply(out_lambda_0, 2, \(x)sum(is.na(x)))
-  out_lambda_0 <- out_lambda_0[,(l0_nna < iter)]
+  l0_nna <- apply(out_lambda_0, 2, function(x) sum(is.na(x)))
+  out_lambda_0 <- out_lambda_0[, l0_nna < iter_total, drop = FALSE]
   nL0 <- ncol(out_lambda_0)
-    
-  s.l.l0 <- as.data.frame(cbind(out_s, out_lambda, out_lambda_0))
-  names(s.l.l0) <- c("s_" %,% (0:nSm1), "lambda_" %,% (1:nL), "lambda_0_" %,% (1:nL0))
+
+  s.l.l0 <- as.data.frame(
+    cbind(out_s, out_lambda, out_lambda_0)
+  )
+
+  names(s.l.l0) <- c(
+    "s_" %,% (0:nSm1),
+    "lambda_" %,% (1:nL),
+    "lambda_0_" %,% (1:nL0)
+  )
+
   samples <- as.data.frame(samples)
   samples <- cbind(samples, s.l.l0)
-  ## create output list
+
+  ## ---------------------------------------------------------------
+  ## Construct final output object.
+  ## ---------------------------------------------------------------
+  type <- hyperparameters$type
 
   if (type %in% c("uni", "mix")) {
-      out_list <- list(
-          Y = Y,
-          I = I, 
-          X = X,
-          Y_0 = Y_0,
-          I_0 = I_0,
-          X_0 = X_0, 
-          samples = samples,
-          lambda = out_lambda,
-          lambda_0 = out_lambda_0,
-          s = out_s,
-          tau = out_tau,
-          lambda_0_move = lambda_0_move,
-          lambda_move = lambda_move,
-          beta_move = beta_count,
-          surv_dat = surv_dat,
-          MTE_dens_dfs = MTE_dens_dfs,
-          stdz = stdz,
-          T.if = T.if, 
-          fnms=c(fnm_cnd_blh, fnm_mgnl_haz0, fnm_mgnl_haz1))
+
+    out_list <- list(
+      Y = Y / stdz,
+      I = I,
+      X = X,
+
+      Y_0 = Y_0 / stdz,
+      I_0 = I_0,
+      X_0 = X_0,
+
+      samples = samples,
+      lambda = out_lambda,
+      lambda_0 = out_lambda_0,
+      s = out_s,
+      tau = out_tau,
+
+      lambda_0_move = lambda_0_move,
+      lambda_move = lambda_move,
+      beta_move = beta_move,
+
+      state_current_vals = state_current_vals,
+
+      n_chains = n_chains,
+      iter_per_chain = iter,
+      iter_total = iter_total,
+
+      surv_dat = surv_dat,
+      MTE_dens_dfs = MTE_dens_dfs,
+
+      stdz = stdz,
+      T.if = T.if,
+
+      fnms = c(
+        fnm_cnd_haz_0_final, 
+        fnm_cnd_cumHz_0_final,
+        fnm_lml_mgnl_surv_0_final,
+        fnm_lml_mgnl_surv_1_final,
+        fnm_mgnl_haz_0_final,
+        fnm_mgnl_haz_1_final
+      )
+    )
+
   } else {
-      samples <- cbind(samples, out_tau)
-      samples <- dplyr::rename_all(samples, dplyr::recode, out_tau = "tau")
-      out_list <- list(
-          Y = Y,
-          I = I, 
-          X = X,
-          Y_0 = Y_0,
-          I_0 = I_0,
-          X_0 = X_0, 
-          samples = samples,
-          lambda = out_lambda,
-          lambda_0 = out_lambda_0,
-          s = out_s,
-          lambda_0_move = lambda_0_move,
-          lambda_move = lambda_move,
-          beta_move = beta_count,
-          surv_dat = surv_dat,
-          MTE_dens_dfs = MTE_dens_dfs,
-          stdz = stdz,
-          T.if=T.if, 
-          fnms = c(fnm_cnd_blh, fnm_mgnl_haz0, fnm_mgnl_haz1))
+
+    samples <- cbind(samples, out_tau)
+    names(samples)[ncol(samples)] <- "tau"
+
+    out_list <- list(
+      Y = Y / stdz,
+      I = I,
+      X = X,
+
+      Y_0 = Y_0 / stdz,
+      I_0 = I_0,
+      X_0 = X_0,
+
+      samples = samples,
+      lambda = out_lambda,
+      lambda_0 = out_lambda_0,
+      s = out_s,
+
+      lambda_0_move = lambda_0_move,
+      lambda_move = lambda_move,
+      beta_move = beta_move,
+
+      state_current_vals = state_current_vals,
+
+      n_chains = n_chains,
+      iter_per_chain = iter,
+      iter_total = iter_total,
+
+      surv_dat = surv_dat,
+      MTE_dens_dfs = MTE_dens_dfs,
+
+      stdz = stdz,
+      T.if = T.if,
+
+      fnms = c(
+        fnm_cnd_haz_0_final,
+        fnm_cnd_cumHz_0_final,
+        fnm_lml_mgnl_surv_0_final,
+        fnm_lml_mgnl_surv_1_final,
+        fnm_mgnl_haz_0_final,
+        fnm_mgnl_haz_1_final
+      )
+    )
   }
 
-  if(!is.null(beta_0)) {
-    out_list$beta_0_move <- beta_0_count
+  if (bp_0 > 0) {
+    out_list$beta_0_move <- beta_0_move
   }
-    
+
   class(out_list) <- c("BayesFBHborrow", "list")
+
   return(out_list)
 }
 
-## GibbsMH_wborrow
+## GibbsMH_noborrow
 ## The main MCMC/MH sampler function under the without
 ## borrowing case
 ## Arguements are the data for the current data Y, I, X, 
 ## (time to event, event indicator covariates),
-## and state variables. 
+## and state variables.
 GibbsMH_noborrow <- function(Y,
                              I,
                              X,
@@ -1164,465 +1521,749 @@ GibbsMH_noborrow <- function(Y,
                              CntlOnly,
                              standardise,
                              G_compute,
-                             fnm_cnd_blh,
-                             fnm_mgnl_haz0,
-                             fnm_mgnl_haz1){
-    
-  # Count accepts
-  lambda_count <- 0
-  lambda_move <- 0
+                             fnm_cnd_haz_0,
+                             fnm_cnd_cumHz_0,
+                             fnm_lml_mgnl_surv_0,
+                             fnm_lml_mgnl_surv_1,
+                             fnm_mgnl_haz_0,
+                             fnm_mgnl_haz_1,
+                             sfx,
+                             keep_bin_files,
+                             n_chains = 1L) {
+  ## make temp directory for files
+  dir_name <- "." %,% sfx
+  dir.create(dir_name)
 
-  # proposal prior
-  a_lambda <- tuning_parameters$a_lambda
-  b_lambda <- tuning_parameters$b_lambda
+  sl <- c("\\","/")[1 + (.Platform$OS.type == "unix")]
+  
+  ## prepend the new path to the filenames
+  fnm_cnd_haz_0 <- dir_name %,% sl %,% fnm_cnd_haz_0 
+  fnm_cnd_cumHz_0 <- dir_name %,% sl %,% fnm_cnd_cumHz_0
+  fnm_lml_mgnl_surv_0 <- dir_name %,% sl %,% fnm_lml_mgnl_surv_0
+  fnm_lml_mgnl_surv_1 <- dir_name %,% sl %,% fnm_lml_mgnl_surv_1
+  fnm_mgnl_haz_0 <- dir_name %,% sl %,% fnm_mgnl_haz_0
+  fnm_mgnl_haz_1 <- dir_name %,% sl %,% fnm_mgnl_haz_1
+ 
+  n_chains <- as.integer(n_chains)
 
-  # hyperparameters
-  a_sigma <- hyperparameters$a_sigma
-  b_sigma <- hyperparameters$b_sigma
-  clam_smooth <- hyperparameters$clam_smooth
-  phi <- hyperparameters$phi
-  Jmax <- hyperparameters$Jmax
+  if (is.na(n_chains) || n_chains < 1L) {
+    stop("'n_chains' must be a positive integer.")
+  }
 
+  ## `iter` now means iterations retained per post-warmup child.
+  iter_total <- iter * n_chains
+
+  ## ---------------------------------------------------------------
+  ## Standardise once in the parent process
+  ## ---------------------------------------------------------------
   stdz <- 1.0
-  if(standardise == TRUE){
-    ## standardise time
+
+  if (standardise) {
     Y.raw <- Y
     stdz <- sum(I) / sum(Y.raw)
     Y <- Y.raw * stdz
   }
 
   bp <- ncol(X)
-  # Set initial values
-  J <- phi
-  sigma2 <- b_sigma / (a_sigma + 1)
-  quantiles <- quantile(Y, probs = seq(0, 1, length.out = J + 2),
-                        na.rm = TRUE, names = FALSE)
-  s <- c(0, quantiles[1:J + 1], max(Y))
 
-  # s need to be unique
-  if(length(unique(s)) < length(s)){
-    J <- 1
-    s <- c(0, max(Y)/ 2, max(Y))
-  }
+  time_grid <- seq(
+    from = 1e-8,
+    to = max(Y),
+    length.out = max_grid
+  )
 
+  ## Prefixes only. The chain appends _<sfx>_<k>_wb.bin.
+  input_list <- list(
+    Y = Y,
+    I = I,
+    X = X,
 
-  group_data <- group_summary(Y, I, NULL, s)
+    tuning_parameters = tuning_parameters,
+    hyperparameters = hyperparameters,
 
-  lambda_init <- init_lambda_hyperparameters(group_data, s)
-  lambda <- mapply(stats::rgamma, n = 1,
-                   shape = lambda_init$shape,
-                   rate = lambda_init$rate)
+    refresh = refresh,
+    max_grid = max_grid,
+    CntlOnly = CntlOnly,
+    G_compute = G_compute,
 
-  lambda_init_sum <- init_lambda_hyperparameters(lapply(group_data, sum), s[c(1, J + 2)])
+    stdz = stdz,
+    time_grid = time_grid,
 
-  log_hazard_sample <- log(mapply(stats::rgamma, n = 500,
-                                  shape = lambda_init_sum$shape,
-                                  rate = lambda_init_sum$rate))
-  mu <- mean(log_hazard_sample)
-  sigma2 <- var(log_hazard_sample)
+    fnm_cnd_haz_0 = fnm_cnd_haz_0,
+    fnm_cnd_cumHz_0 = fnm_cnd_cumHz_0,
+    fnm_lml_mgnl_surv_0 = fnm_lml_mgnl_surv_0,
+    fnm_lml_mgnl_surv_1 = fnm_lml_mgnl_surv_1,
+    fnm_mgnl_haz_0 = fnm_mgnl_haz_0,
+    fnm_mgnl_haz_1 = fnm_mgnl_haz_1,
 
-  beta_count <- 0
-  if(bp == 0) {
-    beta <- NULL
+    sfx = sfx,
+    keep_bin_files = keep_bin_files
+  )
+
+  ## ---------------------------------------------------------------
+  ## Serial warmup
+  ## ---------------------------------------------------------------
+  warmup_out <- GibbsMH_noborrow_chain(
+    input_list = input_list,
+    initial_states = list(initialize = TRUE),
+    iter = warmup_iter,
+    is_warmup = TRUE,
+    k = 0L
+  )
+
+  warmup_state <- warmup_out$state_current_vals
+
+  ## ---------------------------------------------------------------
+  ## Parallel retained sampling
+  ## ---------------------------------------------------------------
+
+  if (n_chains == 1L) {
+    p <- message
+    chain_out <- list(
+      GibbsMH_noborrow_chain(
+        input_list = input_list,
+        initial_states = warmup_state,
+        iter = iter,
+        is_warmup = FALSE,
+        k = 1L,
+        p = p
+      )
+    )
   } else {
-    df_all <- dataframe_fun(Y = Y, I = I, X = X, s = s, lambda = lambda, bp =  ncol(X), J = J)
-    glm.mom <- glmFit(df_all)
-    beta <- glm.mom$beta.mu
-    beta_count <- numeric(bp)
+    chain_ids <- seq_len(n_chains)
 
-    # prior precision matrix
-    beta_prior <- hyperparameters$beta_prior
-    beta_prior_prec <- diag(1/beta_prior, bp)
+    handlers(
+      handler_progress(
+        format = "[:bar] :percent | :message"
+      ),
+      global = TRUE
+    )
+    
+    with_progress({
 
+      p <- progressor(steps = iter_total)
+
+      chain_out <- future_lapply(
+        X = chain_ids,
+        FUN = function(k) {
+          GibbsMH_noborrow_chain(
+            input_list = input_list,
+            initial_states = warmup_state,
+            iter = iter,
+            is_warmup = FALSE,
+            k = k,
+            p = p
+          )
+        },
+        future.seed = TRUE,
+        future.scheduling = structure(TRUE, ordering = "random")
+      )
+    })
   }
 
-  if (bp == 0) {
-    df_all <- dataframe_fun(Y = Y, I = I, X = NULL, s = s, lambda = lambda, bp =  0, J = J)
+  child_failed <- vapply(
+    chain_out,
+    inherits,
+    logical(1),
+    what = "try-error"
+  )
+
+  if (any(child_failed)) {
+    stop("At least one no-borrowing MCMC child chain failed.")
   }
 
-  ## Check for G-computaion
-  if(bp %in% c(0,1)){
-    G_check <- 0
-  }else{
-    G_check <- G_compute * 1
-  }
+  ## ---------------------------------------------------------------
+  ## Combine retained state samples
+  ## ---------------------------------------------------------------
+  samples <- do.call(
+    rbind,
+    lapply(chain_out, \(z) z$other_outputs$samples)
+  )
 
-  ## Tuning parameters
-  cprop_beta <- tuning_parameters$cprop_beta
-  pi_b <- tuning_parameters$pi_b
+  out_lambda <- do.call(
+    rbind,
+    lapply(chain_out, \(z) z$other_outputs$lambda)
+  )
 
-  ## Output array
-  ## J, mu, sigma2, beta
-  nmsB <- dimnames(X)[[2]]  
-  samples <- data.frame(matrix(NA, nrow = iter, ncol = bp + 3))
-  if(bp > 0) colnames(samples)[1:bp] <- nmsB
-  colnames(samples)[bp + (1:3)] <- c("J", "mu", "sigma2" )
+  out_s <- do.call(
+    rbind,
+    lapply(chain_out, \(z) z$other_outputs$s)
+  )
 
-  out_lambda <- data.frame(matrix(NA, nrow = iter, ncol = Jmax + 1))
-  out_s <- data.frame(matrix(NA, nrow = iter, ncol = Jmax + 2))
+  state_current_vals <- lapply(
+    chain_out,
+    \(z) z$state_current_vals
+  )
 
-  #Max number of grid points
-  time_grid <- seq(1e-8, max(Y), length.out = max_grid)
+  lambda_move <- vapply(
+    state_current_vals,
+    \(z) z$lambda_move,
+    numeric(1)
+  )
 
-  ###d added
-  conn3 <- list()
-  if(bp <= 1 || CntlOnly)                           
-  {
-    conn3$cnd_blh <- file(fnm_cnd_blh, "wb")            
+  beta_move <- vapply(
+    state_current_vals,
+    function(z) {
+      value <- z$beta_count
 
-    on.exit({
-      if (exists("conn3")) {
-        invisible(lapply(conn3, function(con) {
-          if (inherits(con, "connection")) {
-            try(close(con), silent = TRUE)
-          }
-        }))
+      if (length(value) == 0) {
+        return(NA_real_)
       }
-    }, add = TRUE)
-  }
-  ## 1) ARRAY out_slam iter x max_grid(2000) ## conditional b>
-  ## out_slam <-  data.frame(matrix(data = NA, nrow = 0, ncol>
-  ## colnames(out_slam) <- time_grid
-  ## Array for marginal estimand from G-computation
-  if(bp > 1 && !CntlOnly){                  
-    nx <- nrow(X)
-    trtAX <- cbind(rep(1, nx), as.matrix(X[,-1]))
-    conAX <- as.matrix(X[,-1])
 
-    ## If doing G-computation, open binary file for writing o>
-    ## conditional hazards in treatment (1) and control (0) a>    
-    conn3 <- list(
-                  cnd_blh = file(fnm_cnd_blh, "wb"),
-                  mgnl_haz0 = file(fnm_mgnl_haz0, "wb"),
-                  mgnl_haz1 = file(fnm_mgnl_haz1, "wb")
-                 )
-
-    on.exit({
-      if (exists("conn3")) {
-        invisible(lapply(conn3, function(con) {
-          if (inherits(con, "connection")) {
-            try(close(con), silent = TRUE)
-          }
-        }))
+      if (length(value) == 1) {
+        return(as.numeric(value))
       }
-    }, add = TRUE)
 
-    ## 2) ARRAY lhaz_bar_trt iter x max_grid(2000) marginal treat hazard(t)
-    ## lhaz_bar_trt <- data.frame(matrix(NA, nrow = 0, ncol = max_grid))
-    ## colnames(lhaz_bar_trt) <- time_grid
-    ## 3) ARRAY out_slam iter x max_grid(2000) marginal control hazard(t)
-    ## lhaz_bar_con <- data.frame(matrix(NA, nrow = 0, ncol = max_grid))
-    ## colnames(lhaz_bar_con) <- time_grid
-    w_sxn_trt <- rdirichlet(iter, rep(1, nx)) # iter draws s x n
-    w_sxn_con <- rdirichlet(iter, rep(1, nx))
-  }
+      ## This preserves the original potentially vector-valued
+      ## beta_count in a compact per-chain summary.
+      sum(value)
+    },
+    numeric(1)
+  )
 
-  ### MCMC START ###
-  sample <- c(rep("(Warmup)", warmup_iter), rep("(Sampling)", iter))
-  mess <- character(iter + warmup_iter)
-  if (refresh != 0) {
-    mess[seq(refresh, iter + warmup_iter, refresh)] <- paste("Iteration:",
-                                                             seq(refresh, iter + warmup_iter, refresh), "/", (iter + warmup_iter),
-                                                             sample[seq(refresh, iter + warmup_iter, refresh)])
-  } else if (refresh > (iter + warmup_iter)) {
-    message("Refresh is larger than number of iterations, using default value (0)")
-    refresh <- 0
-  }
+  ## ---------------------------------------------------------------
+  ## Final merged binary file names
+  ## ---------------------------------------------------------------
+  fnm_cnd_haz_0_final <- fnm_cnd_haz_0 %,% "_" %,% sfx %,% "_wb.bin"
+  fnm_cnd_cumHz_0_final <- fnm_cnd_cumHz_0 %,% "_" %,% sfx %,% "_wb.bin"
 
-  j <- 1 # indx after warmup_iter
-  for (i in 1:(iter + warmup_iter)) {
-    if(i%%refresh == 0 && refresh != 0){message(mess[i])}
+  fnm_lml_mgnl_surv_0_final <- fnm_lml_mgnl_surv_0 %,% "_" %,% sfx %,% "_wb.bin"
+  fnm_lml_mgnl_surv_1_final <- fnm_lml_mgnl_surv_1 %,% "_" %,% sfx %,% "_wb.bin"
 
-    ICAR <- ICAR_calc(s, J, clam_smooth)
-    Sigma_s <- ICAR$Sigma_s
+  fnm_mgnl_haz_0_final <- fnm_mgnl_haz_0 %,% "_" %,% sfx %,% "_wb.bin"
+  fnm_mgnl_haz_1_final <- fnm_mgnl_haz_1 %,% "_" %,% sfx %,% "_wb.bin"
 
-    mu <- mu_update(Sigma_s, lambda, sigma2, J)
-    sigma2 <- sigma2_update(mu, lambda, Sigma_s, J, a_sigma, b_sigma)
+  merged_binary_files <-
+    c(fnm_cnd_haz_0_final,
+      fnm_cnd_cumHz_0_final,
+      fnm_lml_mgnl_surv_0_final,
+      fnm_lml_mgnl_surv_1_final,
+      fnm_mgnl_haz_0_final,
+      fnm_mgnl_haz_1_final)
 
-    #Map lambda and introduce indicators.
-    if (bp > 0) {
-      beta_all <- beta_MH_NR(df = df_all, beta = beta, beta_prior_prec = beta_prior_prec,
-                              bp =  bp, cprop_beta = cprop_beta, beta_count = beta_count)
-      beta <- beta_all$beta
-      beta_count <- beta_all$beta_count
+  on.exit({
+    if (!keep_bin_files) {
+      paths_to_remove <- unique(
+        merged_binary_files[file.exists(merged_binary_files)]
+      )
+
+      if (length(paths_to_remove) > 0) {
+        unlink(paths_to_remove)
+      }
+    }
+    unlink(dir_name, recursive=TRUE, force=TRUE)
+  }, add = TRUE)
+
+  append_binary_files <- function(destination, sources) {
+
+    if (file.exists(destination)) {
+      unlink(destination)
     }
 
-    #lambda, lambda and adjusted data frames
-    dflambda <-lambda_0_MH_cp_NoBorrow(df_all, Y, I, X, s, beta, mu,
-                                        sigma2, lambda,  bp, J, clam_smooth,
-                                        a_lam = a_lambda, b_lam = b_lambda, lambda_count,
-                                        lambda_move)
+    for (source in sources) {
 
-    lambda <- dflambda$lambda_0
-    df_all <- dflambda$df
-    lambda_count <- dflambda$lambda_0_count
-    lambda_move <- dflambda$lambda_0_move
-
-    #shuffle s
-    if (J > 0) {
-      swap_df <- shuffle_split_point_location_NoBorrow(df_all, Y, I,  X,
-                                                        lambda, beta, s, J,  bp, clam_smooth)
-      s <- swap_df$s
-      Sigma_s <- swap_df$Sigma_s
-      df_all <- swap_df$df_all
-    }
-
-    #J update
-    rjmcmc_out <- J_RJMCMC_NoBorrow(df_all, Y, I, X, lambda, beta,
-                                     mu, sigma2, s, J, Jmax,  bp, clam_smooth,
-                                     phi, pi_b)
-    J <- rjmcmc_out$J
-    s <- rjmcmc_out$s
-    lambda <- rjmcmc_out$lambda
-    Sigma_s <- rjmcmc_out$Sigma_s
-    df_all <- rjmcmc_out$df_all
-
-    #J, mu, sigma2, beta, beta
-    if(i > warmup_iter){
-      if(bp > 0) samples[j, 1:bp] <- beta
-      samples[j, bp + 1] <- J
-      samples[j, bp + 2] <- mu
-      samples[j, bp + 3] <- sigma2
-
-
-      out_lambda[j, 1:(length(lambda))] <- lambda
-      out_s[j, 1:(length(s))] <- s
-
-      #Grid of baseline hazards for shrunk estimate
-      indx <- findInterval(time_grid, s, left.open = T)
-      lambda_s <- lambda[indx]
-
-      ## 1) ARRAY
-      ## out_slam[j,] <- lambda_s
-      writeBin(lambda_s, conn3$cnd_blh)
-
-      if(bp > 1 && !CntlOnly){
-        #G-computation output for marginal hazard ratio
-        #draw from Dirichlet
-        w_sxn_ts <- w_sxn_trt[j,]
-        lhaz_up_trt <- log_haz_inroutine(trtAX,
-                                          beta,
-                                          lambda_s,
-                                          time_grid,
-                                          w_sxn_ts)
-        ## 2) ARRAY
-        ## lhaz_bar_trt[j,] <- lhaz_up_trt
-        writeBin(lhaz_up_trt, conn3$mgnl_haz1)
-
-        w_sxn_cs <- w_sxn_trt[j,]
-        beta_c <- beta[-1]
-        lhaz_up_con <- log_haz_inroutine(conAX,
-                                          beta_c,
-                                          lambda_s,
-                                          time_grid,
-                                          w_sxn_cs)
-        ## 3) ARRAY
-        ## lhaz_bar_con[j,] <- lhaz_up_con
-        writeBin(lhaz_up_con, conn3$mgnl_haz0)
+      if (!file.exists(source)) {
+        stop("Expected child binary file was not created: ", source)
       }
 
-      j <- j + 1
+      if (!file.append(destination, source)) {
+        stop("Could not append child binary file: ", source)
+      }
     }
 
+    invisible(destination)
   }
 
+  child_fnms <- lapply(
+    chain_out,
+    \(z) z$other_outputs$fnms
+  )
 
-  ## Close binary files
-  lapply(conn3, close)
-      ##   out_list[["lhaz_bar_trt"]] <- lhaz_bar_trt
-      ##   out_list[["lhaz_bar_con"]] <- lhaz_bar_con
+  append_binary_files(
+    fnm_cnd_haz_0_final,
+    vapply(child_fnms, \(x) unname(x["cnd_haz_0"]), character(1))
+  )
 
-  ### END MCMC/MH loop
+  append_binary_files(
+    fnm_cnd_cumHz_0_final,
+    vapply(child_fnms, \(x) unname(x["cnd_cumHz_0"]), character(1))
+  )
 
-  conn3 <- list()
-  ## Begin summary statistic block
-  ## open binary files for reading
-  if(bp <= 1 || CntlOnly)
-    if(file.exists(fnm_cnd_blh)) 
-      conn3$cnd_blh <- file(fnm_cnd_blh, "rb")
+  if (bp > 1 && !CntlOnly) {
 
-  if(bp > 1 && !CntlOnly){
-      all_files <- file.exists(fnm_mgnl_haz0) &&
-                   file.exists(fnm_mgnl_haz1) &&
-                   file.exists(fnm_cnd_blh)
-      if(all_files) 
-      {
-	  conn3 <- list(
-                         cnd_blh = file(fnm_cnd_blh, "rb"),
-                         mgnl_haz0 = file(fnm_mgnl_haz0, "rb"),
-                         mgnl_haz1 = file(fnm_mgnl_haz1, "rb")
-	               )
-      }
+    append_binary_files(
+      fnm_lml_mgnl_surv_0_final,
+      vapply(child_fnms, \(x) unname(x["lml_mgnl_surv_0"]), character(1))
+    )
+
+    append_binary_files(
+      fnm_lml_mgnl_surv_1_final,
+      vapply(child_fnms, \(x) unname(x["lml_mgnl_surv_1"]), character(1))
+    )
+
+    append_binary_files(
+      fnm_mgnl_haz_0_final,
+      vapply(child_fnms, \(x) unname(x["mgnl_haz_0"]), character(1))
+    )
+
+    append_binary_files(
+      fnm_mgnl_haz_1_final,
+      vapply(child_fnms, \(x) unname(x["mgnl_haz_1"]), character(1))
+    )
   }
 
-  ## find TOS at 25%, 50%, 75% information time
-  Y.I <- cbind(Y/stdz,I)
-  Y.f <- Y.I[order(Y),]
-  Y.f <- cbind(Y.f[,1],cumsum(Y.f[,2])/sum(Y.f[,2]))
-  T.if <- c(sapply(0.25*(1:3), FUN=function(x, yf)yf[max(which(yf[,2]<=x)),1], yf=Y.f), max(Y)/stdz)
+  ## ---------------------------------------------------------------
+  ## Read merged binaries for posterior summaries
+  ## ---------------------------------------------------------------
+  conn3 <- list(
+    cnd_haz_0 = file(fnm_cnd_haz_0_final, "rb"),
+    cnd_cumHz_0 = file(fnm_cnd_cumHz_0_final, "rb")
+  )
 
-
-  ## case 1,2: X is just tretament OR  X is treatment + other covariates but G_check==0
-  ## e.g.  G_compute==FALSE
-    
-  ## NOTE: in either case, when G_check==0 or 1, we can store the conditional hazard and
-  ## survival functions in surv_dat. Thus this first block gets done in either case. 
-
-  ## NOTE: in the following '0' means control group whereas above '0' means historical data
-  ## so just keep that in mind
-    
-  ## 1st line: cumsum over time grid per row
-  ## 2nd line: mean over iterations, per column
-  ## 3rd line: ci over iterations, per column
-  cnd_haz_0 <- matrix(readBin(conn3$cnd_blh, what="double", n=max_grid*iter), max_grid, iter)*stdz
-  med_cnd_haz_0 <- apply(cnd_haz_0, 1, FUN=median)
-  CI_cnd_haz_0 <- t(apply(cnd_haz_0, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))
-
-  cnd_surv_0 <- exp(-apply(cnd_haz_0*DX(time_grid), 2, FUN=cumsum))
-  med_cnd_surv_0 <- apply(cnd_surv_0, 1, FUN=median)
-  CI_cnd_surv_0 <- t(apply(cnd_surv_0, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))
-
-  t_dlt <- diff(time_grid/stdz)[1]*40
-
-  surv_dat <- data.frame(time = time_grid/stdz,
-                          
-                         med_cnd_haz_0 = med_cnd_haz_0,
-                         L_cnd_haz_0 = ksmooth(x=time_grid/stdz, y=CI_cnd_haz_0[,1], bandwidth=t_dlt, kernel="normal")$y,
-                         U_cnd_haz_0 = ksmooth(x=time_grid/stdz, y=CI_cnd_haz_0[,2], bandwidth=t_dlt, kernel="normal")$y,
-
-                         med_cnd_surv_0 = med_cnd_surv_0,
-                         L_cnd_surv_0 = ksmooth(x=time_grid/stdz, y=CI_cnd_surv_0[,1], bandwidth=t_dlt, kernel="normal")$y,
-                         U_cnd_surv_0 = ksmooth(x=time_grid/stdz, y=CI_cnd_surv_0[,2], bandwidth=t_dlt, kernel="normal")$y)
-                         
-  if(!CntlOnly)
-  {
-      cnd_haz_1 <- t(exp(samples[,nmsB[1]])*t(cnd_haz_0))
-      med_cnd_haz_1 <- apply(cnd_haz_1, 1, FUN=median)
-      CI_cnd_haz_1 <- t(apply(cnd_haz_1, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))
-  
-      cnd_surv_1 <- exp(-apply(cnd_haz_1*DX(time_grid), 2, FUN=cumsum))
-      med_cnd_surv_1 <- apply(cnd_surv_1, 1, FUN=median)
-      CI_cnd_surv_1 <- t(apply(cnd_surv_1, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))
-
-      surv_dat$med_cnd_haz_1 <- med_cnd_haz_1
-      surv_dat$L_cnd_haz_1 <- ksmooth(x=time_grid/stdz, y=CI_cnd_haz_1[,1], bandwidth=t_dlt, kernel="normal")$y
-      surv_dat$U_cnd_haz_1 <- ksmooth(x=time_grid/stdz, y=CI_cnd_haz_1[,2], bandwidth=t_dlt, kernel="normal")$y
-
-      surv_dat$med_cnd_surv_1 <- med_cnd_surv_1
-      surv_dat$L_cnd_surv_1 <- ksmooth(x=time_grid/stdz, y=CI_cnd_surv_1[,1], bandwidth=t_dlt, kernel="normal")$y
-      surv_dat$U_cnd_surv_1 <- ksmooth(x=time_grid/stdz, y=CI_cnd_surv_1[,2], bandwidth=t_dlt, kernel="normal")$y
+  if (bp > 1 && !CntlOnly) {
+    conn3$lml_mgnl_surv_0 <- file(fnm_lml_mgnl_surv_0_final, "rb")
+    conn3$lml_mgnl_surv_1 <- file(fnm_lml_mgnl_surv_1_final, "rb")
+    conn3$mgnl_haz_0 <- file(fnm_mgnl_haz_0_final, "rb")
+    conn3$mgnl_haz_1 <- file(fnm_mgnl_haz_1_final, "rb")
   }
-    
+
+  on.exit(
+    invisible(
+      lapply(conn3, function(con) {
+        if (inherits(con, "connection")) {
+          try(close(con), silent = TRUE)
+        }
+      })
+    ),
+    add = TRUE
+  )
+
+  ## ---------------------------------------------------------------
+  ## The original GibbsMH_noborrow posterior-summary block belongs
+  ## here. It is unchanged except that every binary-file read uses
+  ## `iter_total`, not `iter`.
+  ## ---------------------------------------------------------------
+
+  Y.I <- cbind(Y / stdz, I)
+  Y.f <- Y.I[order(Y), , drop = FALSE]
+  Y.f <- cbind(Y.f[, 1], cumsum(Y.f[, 2]) / sum(Y.f[, 2]))
+
+  T.if <- c(
+    sapply(
+      0.25 * (1:3),
+      FUN = function(x, yf) yf[max(which(yf[, 2] <= x)), 1],
+      yf = Y.f
+    ),
+    max(Y) / stdz
+  )
+
+  cnd_haz_0 <- matrix(
+    readBin(
+      conn3$cnd_haz_0,
+      what = "double",
+      n = max_grid * iter_total
+    ),
+    max_grid,
+    iter_total
+  )
+
+  med_cnd_haz_0 <- apply(cnd_haz_0, 1, median)
+
+  CI_cnd_haz_0 <- t(
+    apply(cnd_haz_0, 1, function(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    })
+  )
+
+  cnd_cumHz_0 <- matrix(
+    readBin(
+      conn3$cnd_cumHz_0,
+      what = "double",
+      n = max_grid * iter_total
+    ),
+    max_grid,
+    iter_total
+  )
+
+  med_cnd_cumHz_0 <- apply(cnd_cumHz_0, 1, median)
+
+  CI_cnd_cumHz_0 <- t(
+    apply(cnd_cumHz_0, 1, function(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    })
+  )
+
+  cnd_surv_0 <- exp(-cnd_cumHz_0)
+  med_cnd_surv_0 <- apply(cnd_surv_0, 1, median)
+
+  CI_cnd_surv_0 <- t(
+    apply(cnd_surv_0, 1, function(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    })
+  )
+
+  bw <- 50 * diff(time_grid)[1]
+
+  surv_dat <- data.frame(
+    time = time_grid / stdz,
+
+    med_cnd_haz_0 = med_cnd_haz_0 * stdz,
+    L_cnd_haz_0 = ksmooth(
+      time_grid,
+      CI_cnd_haz_0[, 1],
+      bandwidth = bw,
+      kernel = "normal"
+    )$y * stdz,
+    U_cnd_haz_0 = ksmooth(
+      time_grid,
+      CI_cnd_haz_0[, 2],
+      bandwidth = bw,
+      kernel = "normal"
+    )$y * stdz,
+
+    med_cnd_cumHz_0 = med_cnd_cumHz_0,
+    L_cnd_cumHz_0 = ksmooth(
+      time_grid,
+      CI_cnd_cumHz_0[, 1],
+      bandwidth = bw,
+      kernel = "normal"
+    )$y,
+    U_cnd_cumHz_0 = ksmooth(
+      time_grid,
+      CI_cnd_cumHz_0[, 2],
+      bandwidth = bw,
+      kernel = "normal"
+    )$y,
+
+    med_cnd_surv_0 = med_cnd_surv_0,
+    L_cnd_surv_0 = ksmooth(
+      time_grid,
+      CI_cnd_surv_0[, 1],
+      bandwidth = bw,
+      kernel = "normal"
+    )$y,
+    U_cnd_surv_0 = ksmooth(
+      time_grid,
+      CI_cnd_surv_0[, 2],
+      bandwidth = bw,
+      kernel = "normal"
+    )$y
+  )
+
+  if (!CntlOnly) {
+
+    nmsB <- dimnames(X)[[2]]
+
+    cnd_haz_1 <- t(exp(samples[, nmsB[1]]) * t(cnd_haz_0))
+    med_cnd_haz_1 <- apply(cnd_haz_1, 1, median)
+
+    CI_cnd_haz_1 <- t(
+      apply(cnd_haz_1, 1, function(x) {
+        z <- ci(x)
+        c(z$CI_low, z$CI_high)
+      })
+    )
+
+    cnd_cumHz_1 <- t(exp(samples[, nmsB[1]]) * t(cnd_cumHz_0))
+    med_cnd_cumHz_1 <- apply(cnd_cumHz_1, 1, median)
+
+    CI_cnd_cumHz_1 <- t(
+      apply(cnd_cumHz_1, 1, function(x) {
+        z <- ci(x)
+        c(z$CI_low, z$CI_high)
+      })
+    )
+
+    cnd_surv_1 <- exp(-cnd_cumHz_1)
+    med_cnd_surv_1 <- apply(cnd_surv_1, 1, median)
+
+    CI_cnd_surv_1 <- t(
+      apply(cnd_surv_1, 1, function(x) {
+        z <- ci(x)
+        c(z$CI_low, z$CI_high)
+      })
+    )
+
+    surv_dat$med_cnd_haz_1 <- med_cnd_haz_1 * stdz
+    surv_dat$L_cnd_haz_1 <- ksmooth(
+      time_grid, CI_cnd_haz_1[, 1],
+      bandwidth = bw, kernel = "normal"
+    )$y * stdz
+    surv_dat$U_cnd_haz_1 <- ksmooth(
+      time_grid, CI_cnd_haz_1[, 2],
+      bandwidth = bw, kernel = "normal"
+    )$y * stdz
+
+    surv_dat$med_cnd_cumHz_1 <- med_cnd_cumHz_1
+    surv_dat$L_cnd_cumHz_1 <- ksmooth(
+      time_grid, CI_cnd_cumHz_1[, 1],
+      bandwidth = bw, kernel = "normal"
+    )$y
+    surv_dat$U_cnd_cumHz_1 <- ksmooth(
+      time_grid, CI_cnd_cumHz_1[, 2],
+      bandwidth = bw, kernel = "normal"
+    )$y
+
+    surv_dat$med_cnd_surv_1 <- med_cnd_surv_1
+    surv_dat$L_cnd_surv_1 <- ksmooth(
+      time_grid, CI_cnd_surv_1[, 1],
+      bandwidth = bw, kernel = "normal"
+    )$y
+    surv_dat$U_cnd_surv_1 <- ksmooth(
+      time_grid, CI_cnd_surv_1[, 2],
+      bandwidth = bw, kernel = "normal"
+    )$y
+  }
+
+  ## Keep the original G-computation summary block here, changing
+  ## every `max_grid * iter` to `max_grid * iter_total`.
+  ##
+  ## Specifically, the following four reads must use iter_total:
+  ##
+  ## mgnl_haz_0
+  ## lml_mgnl_surv_0
+  ## mgnl_haz_1
+  ## lml_mgnl_surv_1
+  ##
+  ## Set MTE_dens_dfs <- NULL before that block, exactly as in the
+  ## original function.
+
   MTE_dens_dfs <- NULL
 
-  ## case 3: G_compute is TRUE so, necessarily, X is treatment + other covariantes
-  ## We can add the 'mgnl' hazard and survival function to the (already existing) surv_dat data.frame
-  ## We can compute the marginal treatment effect densities for information fractions 0.25*(1:4) and
-  ## put them in MTE_dens_dfs
-  if(bp > 1 && !CntlOnly)
-  {
-      log_mgnl_haz_0 <- matrix(readBin(conn3$mgnl_haz0, what = "double", n = max_grid * iter), max_grid, iter) * stdz
-      log_mgnl_haz_1 <- matrix(readBin(conn3$mgnl_haz1, what = "double", n = max_grid * iter), max_grid, iter) * stdz
+  if (bp > 1 && !CntlOnly) {
 
-      ## marginal hazard from logged marginal hazard per sample
-      mgnl_haz_0 <- exp(log_mgnl_haz_0)
-      mgnl_haz_1 <- exp(log_mgnl_haz_1)
+    mgnl_haz_0 <- matrix(
+      readBin(conn3$mgnl_haz_0, "double", max_grid * iter_total),
+      max_grid,
+      iter_total
+    )
 
-      ## lines 1-6: same as above for survival function
-      med_mgnl_haz_0 <- apply(mgnl_haz_0, 1, FUN=median)
-      CI_mgnl_haz_0 <- t(apply(mgnl_haz_0, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))
+    lml_mgnl_surv_0 <- matrix(
+      readBin(conn3$lml_mgnl_surv_0, "double", max_grid * iter_total),
+      max_grid,
+      iter_total
+    )
 
-      mgnl_surv_0 <- exp(-apply(mgnl_haz_0*DX(time_grid), 2, FUN=cumsum))
-      med_mgnl_surv_0 <- apply(mgnl_surv_0, 1, FUN=median)
-      CI_mgnl_surv_0 <- t(apply(mgnl_surv_0, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))
+    mgnl_haz_1 <- matrix(
+      readBin(conn3$mgnl_haz_1, "double", max_grid * iter_total),
+      max_grid,
+      iter_total
+    )
 
-      ## lines 1-6: same as above for survival function
-      med_mgnl_haz_1 <- apply(mgnl_haz_1, 1, FUN=median)
-      CI_mgnl_haz_1 <- t(apply(mgnl_haz_1, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))
+    lml_mgnl_surv_1 <- matrix(
+      readBin(conn3$lml_mgnl_surv_1, "double", max_grid * iter_total),
+      max_grid,
+      iter_total
+    )
 
-      mgnl_surv_1 <- exp(-apply(mgnl_haz_1*DX(time_grid), 2, FUN=cumsum))
-      med_mgnl_surv_1 <- apply(mgnl_surv_1, 1, FUN=median)
-      CI_mgnl_surv_1 <- t(apply(mgnl_surv_1, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))
+    mgnl_cumHz_0 <- exp(lml_mgnl_surv_0)
+    mgnl_surv_0 <- exp(-mgnl_cumHz_0)
 
-      mgnl_trt_eff <- log_mgnl_haz_1 - log_mgnl_haz_0
-      med_mgnl_trt_eff <- apply(mgnl_trt_eff, 1, FUN=median)
-      CI_mgnl_trt_eff <- t(apply(mgnl_trt_eff, 1, FUN=\(x){i <- ci(x); c(i$CI_low, i$CI_high)}))      
+    mgnl_cumHz_1 <- exp(lml_mgnl_surv_1)
+    mgnl_surv_1 <- exp(-mgnl_cumHz_1)
 
-      surv_dat$med_mgnl_haz_0 <-  med_mgnl_haz_0
-      surv_dat$L_mgnl_haz_0 <-  ksmooth(x=time_grid/stdz, y=CI_mgnl_haz_0[,1], bandwidth=t_dlt, kernel="normal")$y
-      surv_dat$U_mgnl_haz_0 <-  ksmooth(x=time_grid/stdz, y=CI_mgnl_haz_0[,2], bandwidth=t_dlt, kernel="normal")$y
-      
-      surv_dat$med_mgnl_surv_0 <- med_mgnl_surv_0
-      surv_dat$L_mgnl_surv_0 <- ksmooth(x=time_grid/stdz, y=CI_mgnl_surv_0[,1], bandwidth=t_dlt, kernel="normal")$y
-      surv_dat$U_mgnl_surv_0 <- ksmooth(x=time_grid/stdz, y=CI_mgnl_surv_0[,2], bandwidth=t_dlt, kernel="normal")$y
-      
-      surv_dat$med_mgnl_haz_1 <-  med_mgnl_haz_1
-      surv_dat$L_mgnl_haz_1 <-  ksmooth(x=time_grid/stdz, y=CI_mgnl_haz_1[,1], bandwidth=t_dlt, kernel="normal")$y
-      surv_dat$U_mgnl_haz_1 <-  ksmooth(x=time_grid/stdz, y=CI_mgnl_haz_1[,2], bandwidth=t_dlt, kernel="normal")$y
-      
-      surv_dat$med_mgnl_surv_1 <- med_mgnl_surv_1
-      surv_dat$L_mgnl_surv_1 <- ksmooth(x=time_grid/stdz, y=CI_mgnl_surv_1[,1], bandwidth=t_dlt, kernel="normal")$y
-      surv_dat$U_mgnl_surv_1 <- ksmooth(x=time_grid/stdz, y=CI_mgnl_surv_1[,2], bandwidth=t_dlt, kernel="normal")$y
-      
-      surv_dat$med_mgnl_trt_eff <- med_mgnl_trt_eff
-      surv_dat$L_mgnl_trt_eff <- ksmooth(x=time_grid/stdz, y=CI_mgnl_trt_eff[,1], bandwidth=t_dlt, kernel="normal")$y
-      surv_dat$U_mgnl_trt_eff <- ksmooth(x=time_grid/stdz, y=CI_mgnl_trt_eff[,2], bandwidth=t_dlt, kernel="normal")$y
-      
-      MTE_dens_dfs <- list()
-      for (k in 1:4)
-      {
-          T.idx <- T.if[k]
-          idx <- sum(time_grid/stdz <= T.idx)
-          B <- mgnl_haz_1[idx,] - mgnl_haz_0[idx,]
-          dens <- density(B)
-          MTE_dens_dfs[[k]] <- data.frame(x=dens$x, y=dens$y)
-      }
+    med_mgnl_haz_0 <- apply(mgnl_haz_0, 1, median)
+    med_mgnl_cumHz_0 <- apply(mgnl_cumHz_0, 1, median)
+    med_mgnl_surv_0 <- apply(mgnl_surv_0, 1, median)
+
+    med_mgnl_haz_1 <- apply(mgnl_haz_1, 1, median)
+    med_mgnl_cumHz_1 <- apply(mgnl_cumHz_1, 1, median)
+    med_mgnl_surv_1 <- apply(mgnl_surv_1, 1, median)
+
+    CI_mgnl_haz_0 <- t(apply(mgnl_haz_0, 1, \(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    }))
+
+    CI_mgnl_cumHz_0 <- t(apply(mgnl_cumHz_0, 1, \(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    }))
+
+    CI_mgnl_surv_0 <- t(apply(mgnl_surv_0, 1, \(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    }))
+
+    CI_mgnl_haz_1 <- t(apply(mgnl_haz_1, 1, \(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    }))
+
+    CI_mgnl_cumHz_1 <- t(apply(mgnl_cumHz_1, 1, \(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    }))
+
+    CI_mgnl_surv_1 <- t(apply(mgnl_surv_1, 1, \(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    }))
+
+    mgnl_trt_eff <- lml_mgnl_surv_1 - lml_mgnl_surv_0
+
+    med_mgnl_trt_eff <- apply(mgnl_trt_eff, 1, median)
+
+    CI_mgnl_trt_eff <- t(apply(mgnl_trt_eff, 1, \(x) {
+      z <- ci(x)
+      c(z$CI_low, z$CI_high)
+    }))
+
+    surv_dat$med_mgnl_haz_0 <- med_mgnl_haz_0 * stdz
+    surv_dat$L_mgnl_haz_0 <- ksmooth(
+      time_grid, CI_mgnl_haz_0[, 1],
+      bandwidth = bw, kernel = "normal"
+    )$y * stdz
+    surv_dat$U_mgnl_haz_0 <- ksmooth(
+      time_grid, CI_mgnl_haz_0[, 2],
+      bandwidth = bw, kernel = "normal"
+    )$y * stdz
+
+    surv_dat$med_mgnl_cumHz_0 <- med_mgnl_cumHz_0
+    surv_dat$L_mgnl_cumHz_0 <- ksmooth(
+      time_grid, CI_mgnl_cumHz_0[, 1],
+      bandwidth = bw, kernel = "normal"
+    )$y
+    surv_dat$U_mgnl_cumHz_0 <- ksmooth(
+      time_grid, CI_mgnl_cumHz_0[, 2],
+      bandwidth = bw, kernel = "normal"
+    )$y
+
+    surv_dat$med_mgnl_surv_0 <- med_mgnl_surv_0
+    surv_dat$L_mgnl_surv_0 <- ksmooth(
+      time_grid, CI_mgnl_surv_0[, 1],
+      bandwidth = bw, kernel = "normal"
+    )$y
+    surv_dat$U_mgnl_surv_0 <- ksmooth(
+      time_grid, CI_mgnl_surv_0[, 2],
+      bandwidth = bw, kernel = "normal"
+    )$y
+
+    surv_dat$med_mgnl_haz_1 <- med_mgnl_haz_1 * stdz
+    surv_dat$L_mgnl_haz_1 <- ksmooth(
+      time_grid, CI_mgnl_haz_1[, 1],
+      bandwidth = bw, kernel = "normal"
+    )$y * stdz
+    surv_dat$U_mgnl_haz_1 <- ksmooth(
+      time_grid, CI_mgnl_haz_1[, 2],
+      bandwidth = bw, kernel = "normal"
+    )$y * stdz
+
+    surv_dat$med_mgnl_cumHz_1 <- med_mgnl_cumHz_1
+    surv_dat$L_mgnl_cumHz_1 <- ksmooth(
+      time_grid, CI_mgnl_cumHz_1[, 1],
+      bandwidth = bw, kernel = "normal"
+    )$y
+    surv_dat$U_mgnl_cumHz_1 <- ksmooth(
+      time_grid, CI_mgnl_cumHz_1[, 2],
+      bandwidth = bw, kernel = "normal"
+    )$y
+
+    surv_dat$med_mgnl_surv_1 <- med_mgnl_surv_1
+    surv_dat$L_mgnl_surv_1 <- ksmooth(
+      time_grid, CI_mgnl_surv_1[, 1],
+      bandwidth = bw, kernel = "normal"
+    )$y
+    surv_dat$U_mgnl_surv_1 <- ksmooth(
+      time_grid, CI_mgnl_surv_1[, 2],
+      bandwidth = bw, kernel = "normal"
+    )$y
+
+    surv_dat$med_mgnl_trt_eff <- med_mgnl_trt_eff
+    surv_dat$L_mgnl_trt_eff <- ksmooth(
+      time_grid, CI_mgnl_trt_eff[, 1],
+      bandwidth = bw, kernel = "normal"
+    )$y
+    surv_dat$U_mgnl_trt_eff <- ksmooth(
+      time_grid, CI_mgnl_trt_eff[, 2],
+      bandwidth = bw, kernel = "normal"
+    )$y
+
+    MTE_dens_dfs <- vector("list", 4)
+
+    for (k in 1:4) {
+      idx <- sum(time_grid / stdz <= T.if[k])
+      dens <- density(mgnl_trt_eff[idx, ])
+
+      MTE_dens_dfs[[k]] <- data.frame(
+        x = dens$x,
+        y = dens$y
+      )
+    }
   }
 
-  ## Close binary files
-      ## taken care of by handler at first
-      ## open for writing
+  ## ---------------------------------------------------------------
+  ## Remove unused variable-dimension columns
+  ## ---------------------------------------------------------------
+  s_nna <- apply(out_s, 2, \(x) sum(is.na(x)))
+  out_s <- out_s[, s_nna < iter_total, drop = FALSE]
+  nSm1 <- ncol(out_s) - 1L
 
-  ## output QC
-
-  ## drop any columns which contain all NA
-  ## -- these will be at the end
-  ## then out_s is the correct dimension
-  ## name them s_0, ..., s_nSm1  
-  s_nna <- apply(out_s, 2, \(x)sum(is.na(x)))
-  out_s <- out_s[,(s_nna < iter)]
-  nSm1 <- ncol(out_s) - 1
-  
-  ## drop any columns which contain all NA
-  ## -- these will be at the end
-  ## then out_lambda is the correct dimension
-  ## name them lambda_1, ..., s_nL
-  l_nna <- apply(out_lambda, 2, \(x)sum(is.na(x)))
-  out_lambda <- out_lambda[,(l_nna < iter)]
+  l_nna <- apply(out_lambda, 2, \(x) sum(is.na(x)))
+  out_lambda <- out_lambda[, l_nna < iter_total, drop = FALSE]
   nL <- ncol(out_lambda)
 
   s.l <- as.data.frame(cbind(out_s, out_lambda))
-  names(s.l) <- c("s_" %,% (0:nSm1), "lambda_" %,% (1:nL))
-  samples <- as.data.frame(samples)
-  samples <- cbind(samples, s.l)
-  ## create output list
+
+  names(s.l) <- c(
+    "s_" %,% (0:nSm1),
+    "lambda_" %,% (1:nL)
+  )
+
+  samples <- cbind(as.data.frame(samples), s.l)
+
+  ## ---------------------------------------------------------------
+  ## Remove child-only binaries after merging, if requested.
+  ## The merged final files remain available until this function exits.
+  ## ---------------------------------------------------------------
+
+  child_binary_files <- unlist(lapply(child_fnms, unname), use.names = FALSE)
+
+  child_binary_files <- child_binary_files[file.exists(child_binary_files)]
+
+  if (length(child_binary_files) > 0) {
+    unlink(child_binary_files)
+  }
 
   out_list <- list(
-    Y = Y,
-    I = I, 
+    Y = Y / stdz,
+    I = I,
     X = X,
+
     samples = samples,
     lambda = out_lambda,
     s = out_s,
+
     lambda_move = lambda_move,
-    beta_move = beta_count,
+    beta_move = beta_move,
+
+    state_current_vals = state_current_vals,
+
+    n_chains = n_chains,
+    iter_per_chain = iter,
+    iter_total = iter_total,
+
     surv_dat = surv_dat,
     MTE_dens_dfs = MTE_dens_dfs,
+
     stdz = stdz,
-    T.if=T.if, 
-    fnms = c(fnm_cnd_blh, fnm_mgnl_haz0, fnm_mgnl_haz1))
+    T.if = T.if,
+
+    fnms = c(
+      fnm_cnd_haz_0_final,
+      fnm_cnd_cumHz_0_final,
+      fnm_lml_mgnl_surv_0_final,
+      fnm_lml_mgnl_surv_1_final,
+      fnm_mgnl_haz_0_final,
+      fnm_mgnl_haz_1_final
+    )
+  )
 
   class(out_list) <- c("BayesFBHborrow", "list")
+
   return(out_list)
 }
 
@@ -2580,125 +3221,6 @@ lambda_MH_cp <- function(df_hist, df_curr, Y, I, X, s, beta, beta_0 = NULL, mu, 
 
 }
 
-print.BayesFBHborrow <-
-function(x, ...)
-{
-    ## print method is unaltered by borrowing/no borrowing
-    ## so 4 possibilites
-    ## no trtmt gp, no covs
-    ## no trtmt gp, w covs
-    ## trtd+cntls, no covs
-    ## trtd+cntls, w/ covs
-
-    x_call <- x$call
-    
-    G_chk <- FALSE
-    if(!is.null(x_call$G_compute)) G_chk <- eval(x_call$G_compute)
-    
-    CntlOnly <- FALSE
-    if(!is.null(x_call$CntlOnly)) CntlOnly <- eval(x_call$CntlOnly)
-
-    ind_J <- which(names(x$samples)=="J")
-    nc_X <- ind_J - 1
-    is_X <- nc_X > 0
-    b_nms <- NULL
-    if(is_X) b_nms <- names(x$samples)[1:(ind_J-1)]
-
-    is_2arm <- is_X && !CntlOnly
-    is_Xadj <- nc_X > 1
-    G_chk <- G_chk && is_Xadj
-    
-    ## do in all cases
-    n_grid <- nrow(x$surv_dat)
-    ind.t.if <- sapply(x$T.if, FUN=function(x, TT)max(which(TT<=x)), TT=x$surv_dat[,1])
-    S <- x$surv_dat[ind.t.if,-1]
-    p_nms <- c("0.25","0.50", "0.75", "1.00")
-    t_nms <- round(x$T.if, 4)
-
-    cat(sprintf("Call:\n"))
-    print(x$call)
-    cat('\n')
-        
-
-    ## controls only, w covs or w/o covs
-    if(!is_2arm)
-    {
-        a_nms <- rep("C",4)
-        if(!is_Xadj)
-        {
-            surv_hdng <- "Survival:\n"
-            surv_df <- data.frame(S[,c("med_cnd_surv_0","L_cnd_surv_0","U_cnd_surv_0")])                                     
-            surv_df <- cbind(a_nms, p_nms, t_nms, surv_df)
-            dimnames(surv_df) <- list(1:nrow(surv_df), c("Arm", "InfFrac", "Time", "Survival", "Surv_L", "Surv_U"))
-        }
-        if(is_Xadj)
-        {
-            beta_reps <- x$samples[,b_nms,drop=FALSE]
-            beta_ests_cis <- t(apply(beta_reps, 2, FUN=\(x){ci_x <- ci(x); c(logHR=median(x), 'exp(logHR)'=exp(median(x)), `CrIn.L`=ci_x$CI_low, `CrIn.H`=ci_x$CI_high)}))
-            dimnames(beta_ests_cis)[[1]] <- b_nms
-            
-            surv_hdng <- "Conditional Survival:\n"
-            surv_df <- data.frame(S[,c("med_cnd_surv_0","L_cnd_surv_0","U_cnd_surv_0")])                                     
-            surv_df <- cbind(a_nms, p_nms, t_nms, surv_df)
-            dimnames(surv_df) <- list(1:nrow(surv_df), c("Arm", "InfFrac", "Time", "Survival", "Surv_L", "Surv_U"))
-
-            cat(sprintf("Conditional Treatment Effect and Regression Coefficients:\n"))
-            print(beta_ests_cis)
-            cat('\n')
-        }
-    }
-    ## trtd+cntls, w covs or w/o covs
-    if(is_2arm)
-    {
-        a_nms <- c(rep("C", 4), rep("I", 4))
-        p_nms2 <- rep(p_nms, 2)
-        t_nms2 <- rep(t_nms, 2)
-        if(!G_chk)
-        {
-            ## prepare table of conditional coefficient estimates
-            beta_reps <- x$samples[,b_nms,drop=FALSE]
-            beta_ests_cis <- t(apply(beta_reps, 2, FUN=\(x){ci_x <- ci(x); c(logHR=median(x), 'exp(logHR)'=exp(median(x)), `CrIn.L`=ci_x$CI_low, `CrIn.H`=ci_x$CI_high)}))
-            dimnames(beta_ests_cis)[[1]] <- b_nms
-            
-            surv_hdng <- "Conditional Survival:\n"
-            surv_df <- data.frame(rbind(as.matrix(S[,c("med_cnd_surv_0","L_cnd_surv_0","U_cnd_surv_0")]), 
-                                        as.matrix(S[,c("med_cnd_surv_1","L_cnd_surv_1","U_cnd_surv_1")])))
-            surv_df <- cbind(a_nms, p_nms2, t_nms2, surv_df)
-            dimnames(surv_df) <- list(1:nrow(surv_df), c("Arm", "InfFrac", "Time", "Survival", "Surv_L", "Surv_U"))
-        }
-        if(G_chk && is_Xadj)
-        {
-            surv_hdng <- "Marginal Survival:\n" 
-            
-            surv_df <- data.frame(rbind(as.matrix(S[,c("med_mgnl_surv_0","L_mgnl_surv_0","U_mgnl_surv_0")]), 
-                                        as.matrix(S[,c("med_mgnl_surv_1","L_mgnl_surv_1","U_mgnl_surv_1")])))
-            surv_df <- cbind(a_nms, p_nms2, t_nms2, surv_df)
-            dimnames(surv_df) <- list(1:nrow(surv_df), c("Arm", "InfFrac", "Time", "Survival", "Surv_L", "Surv_U"))
-            
-            mte <- cbind(S[,"med_mgnl_trt_eff"], exp(S[,"med_mgnl_trt_eff"]), S[, c("L_mgnl_trt_eff", "U_mgnl_trt_eff")])
-            MTE <- cbind(p_nms, t_nms, mte)
-            dimnames(MTE) <- list(1:nrow(MTE), c("InfFrac", "Time", "MTE", "exp(MTE)", "MTE_L", "MTE_U"))
-        }
-        
-        if(!G_chk)
-        {
-            cat(sprintf("Conditional Treatment Effect and Regression Coefficients:\n"))
-            print(beta_ests_cis)
-            cat('\n')
-        }
-        if(G_chk && is_Xadj)
-        {
-            cat(sprintf("Marginal Treatment Effect at Landmark Times:\n"))
-            print(MTE)
-            cat('\n')
-        }
-    }    
-
-    cat(sprintf(surv_hdng))
-    print(surv_df, row.names=FALSE)
-    
-    invisible(x)
-}
 
 ## summary.BayesFBHborrow
 summary.BayesFBHborrow <-
@@ -2740,7 +3262,6 @@ function(object, ...)
         a_nms <- rep("C",4)
         if(!is_Xadj)
         {
-            surv_hdng <- "Survival:\n"
             surv_df <- data.frame(S[,c("med_cnd_surv_0","L_cnd_surv_0","U_cnd_surv_0")])                                     
             surv_df <- cbind(a_nms, p_nms, t_nms, surv_df)
             dimnames(surv_df) <- list(1:nrow(surv_df), c("Arm", "InfFrac", "Time", "Survival", "Surv_L", "Surv_U"))
@@ -2751,7 +3272,6 @@ function(object, ...)
             beta_ests_cis <- t(apply(beta_reps, 2, FUN=\(x){ci_x <- ci(x); c(logHR=median(x), 'exp(logHR)'=exp(median(x)), `CrIn.L`=ci_x$CI_low, `CrIn.H`=ci_x$CI_high)}))
             dimnames(beta_ests_cis)[[1]] <- b_nms
             
-            surv_hdng <- "Conditional Survival:\n"
             surv_df <- data.frame(S[,c("med_cnd_surv_0","L_cnd_surv_0","U_cnd_surv_0")])                                     
             surv_df <- cbind(a_nms, p_nms, t_nms, surv_df)
             dimnames(surv_df) <- list(1:nrow(surv_df), c("Arm", "InfFrac", "Time", "Survival", "Surv_L", "Surv_U"))
@@ -2761,65 +3281,65 @@ function(object, ...)
         object$surv_summary <- surv_df
     }
     ## trtd+cntls, w covs or w/o covs
+
+    mrg_surv_df <- MTE <- NULL
     if(is_2arm)
     {
         a_nms <- c(rep("C", 4), rep("I", 4))
         p_nms2 <- rep(p_nms, 2)
         t_nms2 <- rep(t_nms, 2)
-        if(!G_chk)
-        {
-            ## prepare table of conditional coefficient estimates
-            beta_reps <- object$samples[,b_nms,drop=FALSE]
-            beta_ests_cis <- t(apply(beta_reps, 2, FUN=\(x){ci_x <- ci(x); c(logHR=median(x), 'exp(logHR)'=exp(median(x)), `CrIn.L`=ci_x$CI_low, `CrIn.H`=ci_x$CI_high)}))
-            dimnames(beta_ests_cis)[[1]] <- b_nms
-            
-            surv_hdng <- "Conditional Survival:\n"
-            surv_df <- data.frame(rbind(as.matrix(S[,c("med_cnd_surv_0","L_cnd_surv_0","U_cnd_surv_0")]), 
-                                        as.matrix(S[,c("med_cnd_surv_1","L_cnd_surv_1","U_cnd_surv_1")])))
-            surv_df <- cbind(a_nms, p_nms2, t_nms2, surv_df)
-            dimnames(surv_df) <- list(1:nrow(surv_df), c("Arm", "InfFrac", "Time", "Survival", "Surv_L", "Surv_U"))
 
-            object$coefficients <- beta_ests_cis
-        }
+        ## compute conditional estimates regardless
+        ## if(!G_chk)
+        ## {
+        ## prepare table of conditional coefficient estimates
+        beta_reps <- object$samples[,b_nms,drop=FALSE]
+        beta_ests_cis <- t(apply(beta_reps, 2, FUN=\(x){ci_x <- ci(x); c(logHR=median(x), 'exp(logHR)'=exp(median(x)), `CrIn.L`=ci_x$CI_low, `CrIn.H`=ci_x$CI_high)}))
+        dimnames(beta_ests_cis)[[1]] <- b_nms
+           
+        surv_df <- data.frame(rbind(as.matrix(S[,c("med_cnd_surv_0","L_cnd_surv_0","U_cnd_surv_0")]), 
+                                    as.matrix(S[,c("med_cnd_surv_1","L_cnd_surv_1","U_cnd_surv_1")])))
+        surv_df <- cbind(a_nms, p_nms2, t_nms2, surv_df)
+        dimnames(surv_df) <- list(1:nrow(surv_df), c("Arm", "InfFrac", "Time", "Survival", "Surv_L", "Surv_U"))
+
+        object$coefficients <- beta_ests_cis
+        ##}
         if(G_chk && is_Xadj)
         {
-            surv_hdng <- "Marginal Survival:\n" 
-            
-            surv_df <- data.frame(rbind(as.matrix(S[,c("med_mgnl_surv_0","L_mgnl_surv_0","U_mgnl_surv_0")]), 
-                                        as.matrix(S[,c("med_mgnl_surv_1","L_mgnl_surv_1","U_mgnl_surv_1")])))
-            surv_df <- cbind(a_nms, p_nms2, t_nms2, surv_df)
-            dimnames(surv_df) <- list(1:nrow(surv_df), c("Arm", "InfFrac", "Time", "Survival", "Surv_L", "Surv_U"))
+            mrg_surv_df <- data.frame(rbind(as.matrix(S[,c("med_mgnl_surv_0","L_mgnl_surv_0","U_mgnl_surv_0")]), 
+                                            as.matrix(S[,c("med_mgnl_surv_1","L_mgnl_surv_1","U_mgnl_surv_1")])))
+            mrg_surv_df <- cbind(a_nms, p_nms2, t_nms2, mrg_surv_df)
+            dimnames(mrg_surv_df) <- list(1:nrow(mrg_surv_df), c("Arm", "InfFrac", "Time", "Survival", "Surv_L", "Surv_U"))
             
             mte <- cbind(S[,"med_mgnl_trt_eff"], exp(S[,"med_mgnl_trt_eff"]), S[, c("L_mgnl_trt_eff", "U_mgnl_trt_eff")])
             MTE <- cbind(p_nms, t_nms, mte)
             dimnames(MTE) <- list(1:nrow(MTE), c("InfFrac", "Time", "MTE", "exp(MTE)", "MTE_L", "MTE_U"))
 
-            object$coefficients <- MTE
         }
+        object$MTE <- MTE
         object$surv_summary <- surv_df
+        object$mrg_surv_summary <- mrg_surv_df
     }    
 
+    class(object) <- "summary.BayesFBHborrow"
     object
 }
 
-## coef.BayesFBHborrow
-## needs a help file -- called via method dispatch from coef
-coef.BayesFBHborrow <-
-function(object, ...) {
-    return(summary(object)$coefficients)
-}
-coefficients <- coef
+print.BayesFBHborrow <-
+function(x, ...)
+    print(summary(x))
 
-## plot.BayesFBHborrow
-## this needs a help file
-## called via method dispatch from plot()
-plot.BayesFBHborrow <-
-function(x, type=c("survival", "hazard", "trace", "TrtEff"), col=NULL, InfFrac=NULL, ylim=NULL, ...)
+print.summary.BayesFBHborrow <-
+function(x, ...)
 {
+    ## print method is unaltered by borrowing/no borrowing
+    ## so 4 possibilites
+    ## no trtmt gp, no covs
+    ## no trtmt gp, w covs
+    ## trtd+cntls, no covs
+    ## trtd+cntls, w/ covs
     x_call <- x$call
-    minmax <- \(x, lim)pmax(pmin(x,lim[2]), lim[1])
     
-    if(missing(ylim)) ylim=c(-Inf, Inf)
     G_chk <- FALSE
     if(!is.null(x_call$G_compute)) G_chk <- eval(x_call$G_compute)
     
@@ -2835,88 +3355,384 @@ function(x, type=c("survival", "hazard", "trace", "TrtEff"), col=NULL, InfFrac=N
     is_2arm <- is_X && !CntlOnly
     is_Xadj <- nc_X > 1
     G_chk <- G_chk && is_Xadj
-
-    if(missing(type)) type <- "survival"
-
-    if(type=="TrtEff" && !is_2arm)
-    {
-        cat(sprintf("Call:"))
-        print(x$call)
-        stop("There is no treatment effect in a controls only data set!")
-    }
     
-    if(!(type %in% c("TrtEff","trace")))
+    ## do in all cases
+
+    cat(sprintf("Call:\n"))
+    print(x$call)
+    cat('\n')
+
+    ## controls only, w covs or w/o covs
+    if(!is_2arm)
     {
-        am <- c("cnd","mgnl")[1 + G_chk]
-        sh <- c(`survival`="surv", `hazard`="haz")[type]
-        ti <- x$surv_dat$time
-        n_grid <- nrow(x$surv_dat)
-         
-        y0 <- x$surv_dat[["med_" %,% am %,% "_" %,% sh %,% "_0"]]
-        y0.min <- x$surv_dat[["L_" %,% am %,% "_" %,% sh %,% "_0"]]
-        y0.max <- x$surv_dat[["U_" %,% am %,% "_" %,% sh %,% "_0"]]
-        
-        if(!is_2arm)
+        if(!is_Xadj) surv_hdng <- "Survival:\n"
+
+        if(is_Xadj)
         {
-            hdng.pfx <- c("", "Conditional ")[1 + is_Xadj]
-            
-            DAT <- data.frame(time=ti, y=minmax(y0,ylim), y.min=minmax(y0.min,ylim), y.max=minmax(y0.max,ylim))
-            
-            p <- ggplot(data=DAT) + geom_ribbon(aes(x=time, ymin=y.min, ymax=y.max), fill="#A6CEE3", alpha=0.40) +
-                   geom_line(aes(x=time, y=y), color="#1F78B4") + xlab("time") + ylab(hdng.pfx %,% type)
-        }    
-        if(is_2arm)
-        {
-            hdng.pfx <- c("Conditional ", "Marginal ")[1 + G_chk]
-            
-            y1 <- x$surv_dat[["med_" %,% am %,% "_" %,% sh %,% "_1"]]
-            y1.min <- x$surv_dat[["L_" %,% am %,% "_" %,% sh %,% "_1"]]
-            y1.max <- x$surv_dat[["U_" %,% am %,% "_" %,% sh %,% "_1"]]
-        
-        
-            DAT <- data.frame(time=c(ti, ti), y=minmax(c(y0,y1),ylim), y.min=minmax(c(y0.min, y1.min),ylim),
-                              y.max=minmax(c(y0.max, y1.max),ylim), group=as.factor(rep(c("C","I"), each=n_grid)))
-            
-            p <- ggplot(data=DAT) + geom_ribbon(aes(x=time, ymin=y.min, ymax=y.max, fill=group), alpha=0.40) +
-                   scale_fill_manual(values=c("C"="#A6CEE3", "I"="#B2DF8A")) +
-                   scale_color_manual(values=c("C"="#1F78B4", "I"="#33A02C")) +
-                   geom_line(aes(x=time, y=y, color=group)) + xlab("time") + ylab(hdng.pfx %,% type )
-        }    
+            if(!G_chk) surv_hdng <- "Conditional Survival:\n"
+            if(G_chk) surv_hdng  <- "Marginal Survival:\n"
+            cat(sprintf("Conditional Treatment Effect and Regression Coefficients:\n"))
+            print(x$coefficients)
+            cat('\n')
+        }
     }
-    if(type=="TrtEff")
+    ## trtd+cntls, w covs or w/o covs
+    if(is_2arm)
     {
         if(!G_chk)
         {
-            DAT <- x$samples[,b_nms[1],drop=FALSE]
-            p <- ggplot(data=DAT, aes(x=.data[[b_nms[1]]])) + geom_density(fill="#A6CEE3", alpha=0.4) +
-                xlab("Cdtl Trt Eff")
-        } else {
-            if(missing(InfFrac)){
-                InfFrac <- 1
-            }else{
-                if(!(InfFrac %in% (0.25*(1:4))))
-                    stop("'InfFrac' must be 0.25, 0.5, 0.75 or 1")
-            }
-            dens_df <- x$MTE_dens_dfs[[4*InfFrac]]
-            
-            xl <- "Mgnl Trt Eff"
-            if(InfFrac < 1) xl <- xl %,% ", InfFrac=" %,% InfFrac
-            p <- ggplot(dens_df, aes(x = x, y = y)) +
-                geom_ribbon(aes(ymin = 0, ymax = y), fill = "#A6CEE3", alpha = 0.4) +  #
-                geom_line(color = "black", linewidth = 1/2) + xlab(xl) + ylab("density") 
+            surv_hdng <- "Conditional Survival:\n"
+            cat(sprintf("Conditional Treatment Effect and Regression Coefficients:\n"))
+            print(x$coefficients)
+            cat('\n')
         }
-    }
-    if(type=="trace")
-    {
-        if(missing(col)) col <- "J"
-        if(is.null(x$call$iter)){
-            n.iter <- formals(BayesFBHborrow)$iter
-        } else n.iter <- x$call$iter
-        DAT <- data.frame(iter=1:n.iter, y=x$samples[,col])
-        p <- ggplot(data=DAT) + geom_line(aes(x=iter, y=y)) + ylab(col)
-    }
-    p
+        if(G_chk && is_Xadj)
+        {
+            surv_hdng <- "Marginal Survival:\n"
+            cat(sprintf("Marginal Treatment Effect at Landmark Times:\n"))
+            print(x$MTE)
+            cat('\n')
+        }
+    }    
+
+    cat(sprintf(surv_hdng))
+    if(!G_chk) print(x$surv_summary, row.names=FALSE)
+    if(G_chk) print(x$mrg_surv_summary, row.names=FALSE)
+    
+    invisible(x)
 }
+
+print.BFBHBdat <- 
+function(x, ...)
+{
+    cat(sprintf("Current Trial Data (DAT_cc):\n"))
+    print(head(x$DAT_cc))
+
+    cat(sprintf("\n\n"))
+
+    cat(sprintf("Historical Controls Data (DAT_hst):\n"))
+    print(head(x$DAT_hst))
+
+    invisible(x)
+}
+
+## coef.BayesFBHborrow
+## needs a help file -- called via method dispatch from coef
+coef.BayesFBHborrow <-
+function(object, ...) {
+    return(summary(object)$coefficients)
+}
+
+coef.summary.BayesFBHborrow <-
+function(object, ...) {
+    return(object$coefficients)
+}
+
+coefficients <- coef
+
+
+MTE <- function(object, ...) {
+  UseMethod("MTE")
+}
+
+MTE.BayesFBHborrow <- function(object, ...) {
+  summary(update(object, G_compute=TRUE), ...)$MTE
+}
+
+
+MTE.summary.BayesFBHborrow <- function(object, ...) {
+    x <- object
+    class(x) <- "BayesFBHborrow"
+    MTE(x)
+}
+
+## plot.BayesFBHborrow
+## this needs a help file
+## called via method dispatch from plot()
+plot.BayesFBHborrow <-
+  function(x,
+           type = c("survival", "cumulative hazard", "hazard", "trace", "TrtEff"),
+           col = NULL,
+           InfFrac = NULL,
+           ylim = NULL,
+           ...
+           ) {
+      type <- match.arg(type)
+
+      if (is.null(x$samples) || is.null(colnames(x$samples))) {
+          stop("'x$samples' must be a matrix or data frame with named columns.")
+      }
+
+      if (!is.null(ylim)) {
+          if (!is.numeric(ylim) || length(ylim) != 2L || ylim[1] > ylim[2]) {
+              stop("'ylim' must be NULL or a numeric vector of length two with ylim[1] <= ylim[2].")
+          }
+      }
+      
+      get_call_value <- function(call_object, argument, default = FALSE) {
+          expr <- call_object[[argument]]
+          
+          if (is.null(expr)) {
+              return(default)
+          }
+          
+          value <- tryCatch(
+              eval(expr, envir = parent.frame()),
+              error = function(e) default
+          )
+          
+          if (length(value) != 1L || is.na(value)) {
+              return(default)
+          }
+          
+          value
+      }
+      
+      add_ylim <- function(plot_object, ylim) {
+          if (is.null(ylim)) {
+              return(plot_object)
+          }
+          
+          plot_object + ggplot2::coord_cartesian(ylim = ylim)
+      }
+      
+      samples <- x$samples
+      sample_names <- colnames(samples)
+      
+      ind_J <- match("J", sample_names)
+      
+      if (is.na(ind_J)) {
+          stop("Could not find the required 'J' column in 'x$samples'.")
+      }
+      
+      nc_X <- ind_J - 1L
+      is_X <- nc_X > 0L
+      b_nms <- if (is_X) sample_names[seq_len(ind_J - 1L)] else character(0)
+      
+      x_call <- x$call
+      G_compute <- isTRUE(get_call_value(x_call, "G_compute", FALSE))
+      CntlOnly <- isTRUE(get_call_value(x_call, "CntlOnly", FALSE))
+      
+      is_2arm <- is_X && !CntlOnly
+      is_Xadj <- nc_X > 1L
+      G_chk <- G_compute && is_Xadj
+      
+      if (type == "TrtEff" && !is_2arm) {
+          stop("There is no treatment effect in a controls-only data set.")
+      }
+
+      type.lgnd <- c(`survival`="surv", `cumulative hazard`="cumHz", `hazard`="haz")
+      
+      if (type %in% c("survival", "cumulative hazard", "hazard")) {
+          if (is.null(x$surv_dat) || !"time" %in% names(x$surv_dat)) {
+              stop("'x$surv_dat' must contain a 'time' column.")
+          }
+          
+          surv_dat <- x$surv_dat
+          ti <- surv_dat[["time"]]
+          n_grid <- nrow(surv_dat)
+          
+          estimand <- if (G_chk) "mgnl" else "cnd"
+          quantity <- type.lgnd[type]
+          
+          get_surv_column <- function(prefix, arm) {
+              column_name <- paste0(prefix, "_", estimand, "_", quantity, "_", arm)
+              
+              if (!column_name %in% names(surv_dat)) {
+                  stop(sprintf(
+                      "Required column '%s' was not found in 'x$surv_dat'.",
+                      column_name
+                  ))
+              }
+              
+              surv_dat[[column_name]]
+          }
+          
+          y0 <- get_surv_column("med", 0)
+          y0_min <- get_surv_column("L", 0)
+          y0_max <- get_surv_column("U", 0)
+          
+          if (!is_2arm) {
+              heading_prefix <- if (is_Xadj) "Conditional " else ""
+              
+              dat <- data.frame(
+                  time = ti,
+                  y = y0,
+                  y_min = y0_min,
+                  y_max = y0_max
+              )
+              
+              p <- ggplot2::ggplot(dat) +
+                  ggplot2::geom_ribbon(
+                               ggplot2::aes(x = time, ymin = y_min, ymax = y_max),
+                               fill = "#A6CEE3",
+                               alpha = 0.40
+                           ) +
+                  ggplot2::geom_line(
+                               ggplot2::aes(x = time, y = y),
+                               colour = "#1F78B4"
+                           ) +
+                  ggplot2::labs(
+                               x = "Time",
+                               y = paste0(heading_prefix, type)
+                           )
+          } else {
+              y1 <- get_surv_column("med", 1)
+              y1_min <- get_surv_column("L", 1)
+              y1_max <- get_surv_column("U", 1)
+              
+              heading_prefix <- if (G_chk) "Marginal " else "Conditional "
+              
+              dat <- data.frame(
+                  time = c(ti, ti),
+                  y = c(y0, y1),
+                  y_min = c(y0_min, y1_min),
+                  y_max = c(y0_max, y1_max),
+                  group = factor(
+                      rep(c("Control", "Intervention"), each = n_grid),
+                      levels = c("Control", "Intervention")
+                  )
+              )
+              
+              p <- ggplot2::ggplot(dat) +
+                  ggplot2::geom_ribbon(
+                              ggplot2::aes(x = time,
+                                            ymin = y_min,
+                                            ymax = y_max,
+                                            fill = group,
+                                            group = group
+                                        ),
+                              alpha = 0.40
+                            ) +
+                  ggplot2::geom_line(
+                              ggplot2::aes(x = time,
+                                            y = y,
+                                            colour = group,
+                                            group = group
+                                        )
+                            ) +
+                  ggplot2::scale_fill_manual(
+                                 values = c("Control" = "#A6CEE3",
+                                          "Intervention" = "#B2DF8A")
+                            ) +
+                  ggplot2::scale_colour_manual(
+                                 values = c(
+                                   "Control" = "#1F78B4",
+                                   "Intervention" = "#33A02C"
+                            )
+                          ) +
+                  ggplot2::labs(x = "Time",
+                                y = paste0(heading_prefix, type),
+                                fill = NULL,
+                                colour = NULL)
+          }
+          
+          return(add_ylim(p, ylim))
+      }
+      
+      if (type == "TrtEff") {
+          if (!G_chk) {
+              treatment_effect_column <- b_nms[1L]
+              
+              dat <- data.frame(
+                  treatment_effect = samples[, treatment_effect_column]
+              )
+              
+              p <- ggplot2::ggplot(
+                                dat,
+                                ggplot2::aes(x = treatment_effect)
+                            ) +
+                  ggplot2::geom_density(
+                               fill = "#A6CEE3",
+                               alpha = 0.40
+                           ) +
+                  ggplot2::labs(
+                               x = "Conditional treatment effect",
+                               y = "Density"
+                           )
+          } else {
+              if (is.null(InfFrac)) {
+                  InfFrac <- 1
+              }
+              
+              valid_inf_frac <- c(0.25, 0.50, 0.75, 1.00)
+              
+              if (!is.numeric(InfFrac) ||
+                  length(InfFrac) != 1L ||
+                  !InfFrac %in% valid_inf_frac) {
+                  stop("'InfFrac' must be one of 0.25, 0.5, 0.75, or 1.")
+              }
+              
+              density_index <- as.integer(round(4 * InfFrac))
+              
+              if (is.null(x$MTE_dens_dfs) ||
+                  length(x$MTE_dens_dfs) < density_index ||
+                  is.null(x$MTE_dens_dfs[[density_index]])) {
+                  stop("The requested marginal treatment-effect density is unavailable.")
+              }
+              
+              dens_df <- x$MTE_dens_dfs[[density_index]]
+              
+              if (!all(c("x", "y") %in% names(dens_df))) {
+                  stop("The selected treatment-effect density must contain columns named 'x' and 'y'.")
+              }
+              
+              x_label <- "Marginal treatment effect"
+              
+              if (InfFrac < 1) {
+                  x_label <- paste0(x_label, ", InfFrac = ", InfFrac)
+              }
+              
+              p <- ggplot2::ggplot(
+                                dens_df,
+                                ggplot2::aes(x = x, y = y)
+                            ) +
+                  ggplot2::geom_ribbon(
+                               ggplot2::aes(ymin = 0, ymax = y),
+                               fill = "#A6CEE3",
+                               alpha = 0.40
+                           ) +
+                  ggplot2::geom_line(
+                               colour = "black",
+                               linewidth = 0.5
+                           ) +
+                  ggplot2::labs(
+                               x = x_label,
+                               y = "Density"
+                           )
+          }
+          
+          return(add_ylim(p, ylim))
+      }
+      
+      if (type == "trace") {
+          if (is.null(col)) {
+              col <- "J"
+          }
+          
+          if (!is.character(col) || length(col) != 1L || !col %in% sample_names) {
+              stop("'col' must be the name of a column in 'x$samples'.")
+          }
+          
+          trace_values <- samples[, col]
+          
+          dat <- data.frame(
+              iteration = seq_along(trace_values),
+              value = trace_values
+          )
+          
+          p <- ggplot2::ggplot(dat) +
+              ggplot2::geom_line(
+                           ggplot2::aes(x = iteration, y = value)
+                       ) +
+              ggplot2::labs(
+                           x = "Retained MCMC iteration",
+                           y = col
+                       )
+          
+          return(add_ylim(p, ylim))
+      }
+  }
 
 Combine <-
 function(p1, p2, lgnd=NULL)
@@ -3057,11 +3873,19 @@ function(object,
          max_grid = 2000,
          standardise = TRUE,
          G_compute = FALSE,
-         preprocess = TRUE, 
-         fnm_cnd_blh = "cnd_blh",
-         fnm_mgnl_haz0 = "mgnl_haz0",
-         fnm_mgnl_haz1 = "mgnl_haz1",
+         preprocess = TRUE,
+         fnm_cnd_haz_0 = "cnd_haz_0",
+         fnm_cnd_cumHz_0 = "cnd_cumHz_0",
+         fnm_lml_mgnl_surv_0 = "lml_mgnl_surv_0",
+         fnm_lml_mgnl_surv_1 = "lml_mgnl_surv_1",
+         fnm_mgnl_haz_0 = "mgnl_haz_0",
+         fnm_mgnl_haz_1 = "mgnl_haz_1",
+         sfx = NULL,
+         keep_bin_files = FALSE,
+         n_chains = 1L,
+         hpc_max_cores = 16, 
          dbg=FALSE,
+         evaluate = TRUE, 
          ...){
     
     .call. <- um <- match.call()
@@ -3620,163 +4444,192 @@ init_lambda_hyperparameters <- function(group_data,
   return(list(shape = shape, rate = rate, t2 = t2))
 }
 
-set_tuning_parameters <- function(tuning_parameters = NULL,
-                                   borrow,
-                                   X,
-                                   X_0 = NULL) {
-  tuning_parameters_out <- tuning_parameters
-
-  if (borrow) {
-    n_beta = ncol(X)
-    defaults <- list(cprop_beta = 1.1,
+set_tuning_parameters <- function(cprop_beta,
+                                  a_lambda,
+                                  b_lambda,
+                                  pi_b,
+                                  alpha,
+                                  cprop_beta_0, 
+                                  borrow,
+                                  verbose) {
+  defaults <-
+    switch(borrow,
+           no = list(cprop_beta = 1.1,
                      a_lambda = 0.01,
                      b_lambda = 0.01,
-                     pi_b = 0.5,
-                     alpha = 0.4)
+                     pi_b = 0.5),
+           yes1 = list(cprop_beta = 1.1,
+                       a_lambda = 0.01,
+                       b_lambda = 0.01,
+                       pi_b = 0.5,
+                       alpha = 0.4),
+           yesX0 = list(cprop_beta = 1.1,
+                        a_lambda = 0.01,
+                        b_lambda = 0.01,
+                        pi_b = 0.5,
+                        alpha = 0.4,
+                        cprop_beta_0 = 1.1))
+           
+    call_obj <- match.call()
+    args_sppld <- names(call_obj)
+    args_dflt <- names(defaults)
+    out <- as.list(call_obj[-1])
+    out$borrow <- NULL
+    out$verbose <- NULL
+    
+    args_flld <- setdiff(args_dflt, args_sppld)
+    for(a in args_flld) out[[a]] <- defaults[[a]]
 
-    if (!is.null(X_0)) {
-      defaults$cprop_beta_0 <- 1.1
+    tst_lvl <- 1 * (borrow == "no") +
+               2 * (borrow == "yes1") + 
+               3 * (borrow == "yesX0")
+
+    if(tst_lvl >= 1) {
+      checkmate::assert_double(out$cprop_beta, lower = 0.2, upper = 2.5)
+      checkmate::assert_double(out$a_lambda, lower = 0.005, upper = 1-1e-6)
+      checkmate::assert_double(out$b_lambda, lower = 0.005, upper = 1-1e-6)
+      checkmate::assert_double(out$pi_b, lower = 0, upper = 1)
     }
+    if(tst_lvl >= 2) checkmate::assert_double(out$alpha, lower = 0, upper = 1)
+    if(tst_lvl == 3) checkmate::assert_double(out$cprop_beta_0, lower = 0.2, upper = 2.5)
 
-    for (key in names(defaults)) {
-      if (!key %in% names(tuning_parameters)) {
-        tuning_parameters_out[[key]] <- defaults[[key]]
+    ## Wrap the message to 80 character lines broken at comma separators. 
+    if(verbose) {
+      if(length(args_flld)>0) {
+        message("The following tuning parameters were set to defalt: ")
+        msg <-  paste(unname(apply(cbind(names(out[args_flld]), format(out[args_flld])), 1, \(x) paste(x, collapse=": "))), collapse=", ")
+        msg <- paste(strwrap(gsub(",(?=\\S)", ", ", msg, perl = TRUE), width = 80), collapse="\n")
+        message(msg)
       }
     }
-
-  } else {
-    n_beta = ncol(X)
-    defaults <- list(cprop_beta = 1.1,
-                     a_lambda = 0.01,
-                     b_lambda = 0.01,
-                     pi_b = 0.5)
-
-    for (key in names(defaults)) {
-      if (!key %in% names(tuning_parameters)) {
-        tuning_parameters_out[[key]] <- defaults[[key]]
-      }
-    }
+    out
   }
 
-  set_to_default <- setdiff(names(tuning_parameters_out), names(tuning_parameters))
-  if (length(set_to_default) > 0) {
-    default_params_str <- paste(set_to_default, collapse = ", ")
-    message("The following tuning_parameters were set to default: ", default_params_str)
-  }
-  return(tuning_parameters_out)
-}
+set_hyperparameters <-
+  function(beta_prior, beta_0_prior, a_tau, b_tau, c_tau, d_tau, type, p_0,
+           a_sigma, b_sigma, phi, clam_smooth, Jmax, model_choice, verbose) {
+    defaults <-
+      switch(model_choice,
+             mix = list(beta_prior = 10^2,
+                        a_sigma = 1,
+                        b_sigma = 1,
+                        type = "mix",
+                        phi = 3,
+                        clam_smooth = 0.8,
+                        Jmax = 5,                        
+                        beta_0_prior = 10^2,
+                        a_tau = 1,
+                        b_tau = 0.001,
+                        c_tau = 1,
+                        d_tau = 5,
+                        p_0 = 0.8),
 
-set_hyperparameters <- function(hyperparameters = NULL, model_choice) {
-  hyperparameters_out <- hyperparameters
-  if (model_choice == "mix") {
-    defaults <- list(beta_prior = 10^2,
-                     beta_0_prior = 10^2,
-                     a_tau = 1,
-                     b_tau = 0.001,
-                     c_tau = 1,
-                     d_tau = 5,
-                     type = "mix",
-                     p_0 = 0.8,
-                     a_sigma = 1,
-                     b_sigma = 1,
-                     phi = 3,
-                     clam_smooth = 0.8,
-                     Jmax = 5)
+             all = list(beta_prior = 10^2,
+                        a_sigma = 1,
+                        b_sigma = 1,           
+                        type = "all",
+                        phi = 3,
+                        clam_smooth = 0.8,
+                        Jmax = 5,                        
+                        beta_0_prior = 10^2,
+                        a_tau = 1,
+                        b_tau = 0.001,
+                        c_tau = 1,
+                        d_tau = 5,
+                        p_0 = 0.8),
 
-    for (key in names(defaults)) {
-      if (!key %in% names(hyperparameters)) {
-        hyperparameters_out[[key]] <- defaults[[key]]
+             uni = list(beta_prior = 10^2,
+                        a_sigma = 1,
+                        b_sigma = 1,
+                        type = "uni",
+                        phi = 3,
+                        clam_smooth = 0.8,
+                        Jmax = 5,                        
+                        beta_0_prior = 10^2,
+                        a_tau = 1,
+                        b_tau = 0.001),
+             
+             no_borrow = list(beta_prior = 10^2,
+                              a_sigma = 1,
+                              b_sigma = 1,
+                              type = "no_borrow", 
+                              phi = 3,
+                              clam_smooth = 0.8,
+                              Jmax = 5))
+
+    call_obj <- match.call()
+    args_sppld <- names(call_obj)
+    args_dflt <- names(defaults)
+    out <- as.list(call_obj[-1])
+    out$model_choice <- NULL
+    out$verbose <- NULL
+    
+    args_flld <- setdiff(args_dflt, args_sppld)
+    for(a in args_flld) out[[a]] <- defaults[[a]]
+
+    tst_lvl <-   1 * (model_choice == "no_borrow") +
+                  2 * (model_choice == "uni") + 
+                  3 * (model_choice %in% c("mix","all"))
+
+    if(tst_lvl >= 1) {
+      checkmate::assert_double(out$beta_prior, lower = 50, upper = 150)
+      checkmate::assert_double(out$a_sigma, lower = 1, upper = 1)
+      checkmate::assert_double(out$b_sigma, lower = 0.001, upper = 001)
+      checkmate::assert_integerish(out$phi, any.missing = FALSE)
+      checkmate::assert_double(out$phi, lower = 3, upper = 3)
+      checkmate::assert_double(out$clam_smooth, lower = 0, upper = 1)
+      checkmate::assert_integerish(out$Jmax, any.missing = FALSE)
+      checkmate::assert_integerish(out$Jmax, any.missing = FALSE)
+      checkmate::assert_true(out$type %in% c("mix", "all", "uni", "no_borrow"))
+    }
+    if(tst_lvl >= 2) {
+      checkmate::assert_double(out$beta_0_prior, lower = 50, upper = 150)
+      checkmate::assert_double(out$a_tau, lower = 1, upper = 1)
+      checkmate::assert_double(out$b_tau, lower = 0.001, upper = 001)
+    }
+    if(tst_lvl == 3) {
+      checkmate::assert_double(out$c_tau, lower = 1, upper = 1)
+      checkmate::assert_double(out$d_tau, lower = 5, upper = 5)
+      checkmate::assert_double(out$p_0, lower = 0, upper = 1)
+      checkmate::assert_true(out$type %in% c("mix", "all", "uni", "no_borrow"))
+    }
+    ## keep 'type' among the hyperparameter list for output
+    ## but remove it from list of possible defaults filled in
+    ## for the message. Wrap the message to 80 character
+    ## lines broken at comma separators.
+    args_flld1 <- args_flld
+    args_flld1 <- args_flld1[-which(args_flld1=="type")]
+    if(verbose) {
+      message("Choice of borrowing: ", model_choice , "\n")
+      if(length(args_flld)>0) {
+        message("The following hyperparameters were set to defalt: ")
+        msg <-  paste(unname(apply(cbind(names(out[args_flld1]), format(out[args_flld1])), 1, \(x) paste(x, collapse=": "))), collapse=", ")
+        msg <- paste(strwrap(gsub(",(?=\\S)", ", ", msg, perl = TRUE), width = 80), collapse="\n")
+        message(msg)
       }
     }
-
-  } else if (model_choice == "all") {
-    defaults <- list(beta_prior = 10^2,
-                     beta_0_prior = 10^2,
-                     a_tau = 1,
-                     b_tau = 0.001,
-                     c_tau = 1,
-                     d_tau = 5,
-                     type = "all",
-                     p_0 = 0.8,
-                     a_sigma = 1,
-                     b_sigma = 1,
-                     phi = 3,
-                     clam_smooth = 0.8,
-                     Jmax = 5)
-
-    for (key in names(defaults)) {
-      if (!key %in% names(hyperparameters)) {
-        hyperparameters_out[[key]] <- defaults[[key]]
-      }
-    }
-
-  } else if (model_choice == "uni") {
-    defaults <- list(beta_prior = 10^2,
-                     beta_0_prior = 10^2,
-                     a_tau = 1,
-                     b_tau = 0.001,
-                     type = "uni",
-                     a_sigma = 1,
-                     b_sigma = 1,
-                     phi = 3,
-                     clam_smooth = 0.8,
-                     Jmax = 5)
-
-  for (key in names(defaults)) {
-    if (!key %in% names(hyperparameters)) {
-      hyperparameters_out[[key]] <- defaults[[key]]
-      }
+    out
   }
 
-  } else if (model_choice == "no_borrow") {
-    defaults <- list(beta_prior = 10^2,
-                     a_sigma = 1,
-                     b_sigma = 1,
-                     phi = 3,
-                     clam_smooth = 0.8,
-                     Jmax = 5)
-
-    for (key in names(defaults)) {
-      if (!key %in% names(hyperparameters)) {
-        hyperparameters_out[[key]] <- defaults[[key]]
-      }
-    }
-  }
-
-  set_to_default <- setdiff(names(hyperparameters_out), names(hyperparameters))
-  set_to_default <- set_to_default[set_to_default != "type"]
-  if (length(set_to_default) > 0) {
-    default_params_str <- paste(set_to_default, collapse = ", ")
-    message("The following hyperparameters were set to default: ", default_params_str)
-  }
-  message("Choice of borrowing: ", model_choice)
-  return(hyperparameters_out)
-}
-
-log_haz_inroutine <- function(AX,
-                              beta_s,
-                              lambda_s,
-                              time_grid,
-                              w_sxn){
-
+lml_mgnl_surv_fn <- function(AX,
+                             beta_s,
+                             cnd_cumHz_0,
+                             w_sxn) {
+  ## bayesian bootstrap:  w_sxn ~ dirichlet of dimension ncol(AX)  
   xbeta <- AX %*% beta_s
-  hz_mult <- as.numeric(exp(drop(xbeta))) #numeric vector
-  cw <- as.numeric(-lambda_s * time_grid)
-  cumhazard_s <-  tcrossprod(hz_mult, cw)
-  post_surv <- exp(cumhazard_s)
+  RR <- as.numeric(exp(drop(xbeta))) #numeric vector
+  cumhazard_s <-  tcrossprod(RR, cnd_cumHz_0)
+  post_surv <- exp(-cumhazard_s)
 
-  # w_sxn is a draw from the Dirichlet
-  post_surv_adj <- post_surv * w_sxn
-
-  # Average over the covariates for the survival function
-  S_bar_s <- apply(post_surv_adj, 2, sum)
+  # _Average_ over the covariates for the survival function
+  S_bar_s <- colSums(post_surv*w_sxn)
   eps <- 1e-15
   S_bar_clamped <- pmin(pmax(S_bar_s, eps), 1 - eps)
 
   # Log hazard per sample 1 x time grid
-  log_hazard_marg <-  log(-log(S_bar_clamped))    # n x G
+  lml_mgnl_surv <-  log(-log(S_bar_clamped))    # n x G
 
-  return(log_hazard_marg)
+  return(lml_mgnl_surv)
 }
 
 deviance_BIC <- function(df, lambda, beta) {
@@ -3882,48 +4735,46 @@ xifinder <- function(b_tau, d_tau, p_0){
 
 ## read hazard function samples
 read_haz_mcmc_smpls <-
-function(obj)
-{
-  cnd_haz_0 <- mgnl_haz_0 <- mgnl_haz_1 <- NULL
-  fmls <- formals(BayesFBHborrow)
-  cll <- obj$call
-  iter <- ifelse(!is.null(cll$iter), cll$iter, fmls$iter)
-  max_grid <- ifelse(!is.null(cll$max_grid), cll$max_grid, fmls$max_grid)
-  CntlOnly <- ifelse(!is.null(cll$CntlOnly), cll$CntlOnly, fmls$CntlOnly)
-  bp <- ifelse(!is.null(obj$formula), attr(terms(obj$formula), "term.labels"), grep("X_", names(obj$data)))
-  stdz <- obj$stdz
-
-  fnm_cnd_blh <- obj$fnms[1]
-  fnm_mgnl_haz0 <- obj$fnms[2]
-  fnm_mgnl_haz1 <- obj$fnms[3]
-
-  conn3 <- list()
-  if(bp <= 1 || CntlOnly)
-    if(file.exists(fnm_cnd_blh))
-    {
-      conn3$cnd_blh <- file(fnm_cnd_blh, "rb")
-      cnd_haz_0 <- matrix(readBin(conn3$cnd_blh, what = "double", n = max_grid * iter), max_grid, iter) * stdz
-    }
-
-  if(bp > 1 && !CntlOnly){
-      all_files <- file.exists(fnm_mgnl_haz0) &&
-                   file.exists(fnm_mgnl_haz1) &&
-                   file.exists(fnm_cnd_blh)
-      if(all_files)
-      {
-          conn3 <- list(
-                         cnd_blh = file(fnm_cnd_blh, "rb"),
-                         mgnl_haz0 = file(fnm_mgnl_haz0, "rb"),
-                         mgnl_haz1 = file(fnm_mgnl_haz1, "rb")
-                       )
-          cnd_haz_0 <- matrix(readBin(conn3$cnd_blh, what = "double", n = max_grid * iter), max_grid, iter) * stdz
-          mgnl_haz_0 <- matrix(readBin(conn3$mgnl_haz0, what = "double", n = max_grid * iter), max_grid, iter) * stdz
-          mgnl_haz_1 <- matrix(readBin(conn3$mgnl_haz1, what = "double", n = max_grid * iter), max_grid, iter) * stdz
-      }
-  }
-  lapply(conn3, close)
-
-  list(cnd_haz_0=cnd_haz_0, mgnl_haz_0=mgnl_haz_0, mgnl_haz_1=mgnl_haz_1)
+  function (obj) {
+    cnd_haz_0 <- mgnl_haz_0 <- mgnl_haz_1 <- NULL
+    fmls <- formals(BayesFBHborrow)
+    cll <- obj$call
+    iter <- ifelse(!is.null(cll$iter), eval(cll$iter), eval(fmls$iter))
+    max_grid <- ifelse(!is.null(cll$max_grid), eval(cll$max_grid), 
+        eval(fmls$max_grid))
+    CntlOnly <- ifelse(!is.null(cll$CntlOnly), eval(cll$CntlOnly), 
+        eval(fmls$CntlOnly))
+    bp <- 1 + (nrow(coefficients(summary(obj))) - 1)/2
+    bp <- ifelse(length(bp) > 0, bp, 0)
+    stdz <- obj$stdz
+    sfx <- substring(obj$fnms, 1, 7)[1]
+    
+    fnms <- obj$fnms
+    obj_nms <- substring(fnms, 9)
+    obj_nms <- substring(obj_nms, 1, nchar(obj_nms) - 14)
+    names(obj_nms) <- fnms
+    
+    out <- as.data.frame(matrix(double(0), 0, 6, dimnames = list(NULL, obj_nms)))
+                     
+    fnm_exists <- sapply(fnms, FUN = file.exists)
+    fe.ord <- order_fnms(fnm_exists)
+    fnm_exists <- fnm_exists[fe.ord]
+    fnms <- names(fnm_exists)
+    conn3 <- list()
+    for (f in fnms) if (fnm_exists[[f]]) 
+        conn3[[f]] <- file(f, "rb")
+    on.exit(invisible(lapply(conn3, function(con) {
+        if (inherits(con, "connection")) {
+            try(close(con), silent = TRUE)
+        }
+    })), add = TRUE)
+    out <- list()
+    m <- length(fnms)
+    for (f in fnms)
+      out[[obj_nms[f]]] <- matrix(readBin(conn3[[f]], what = "double", 
+                                 n = max_grid * iter),
+                         max_grid, iter)
+    out
 }
 
 ## data simulation function
@@ -3997,8 +4848,1063 @@ function(n_cc_1, n_cc_0, n_hst, B_trt, B_x_cc, int_cc, B_x_hst, int_hst, X_fact_
     DAT_hst <- cbind(DAT_hst, DAT.X0)
 
     names(DAT_cc)[-(1:3)] <- names(DAT_hst)[-(1:2)] <- "X_" %,% add.zeros(1:p, max(p,10))
-    list(DAT_cc=DAT_cc, DAT_hst=DAT_hst)
+    out <- list(DAT_cc=DAT_cc, DAT_hst=DAT_hst)
+    class(out) <- "BFBHBdat"
+    out 
 }
+
+
+GibbsMH_wborrow_chain <- function(input_list,
+                                  initial_states,
+                                  iter,
+                                  is_warmup,
+                                  k,
+                                  p) {
+
+  ## ---------------------------------------------------------------
+  ## Unpack immutable inputs
+  ## ---------------------------------------------------------------
+  Y <- input_list$Y
+  I <- input_list$I
+  X <- input_list$X
+
+  Y_0 <- input_list$Y_0
+  I_0 <- input_list$I_0
+  X_0 <- input_list$X_0
+
+  tuning_parameters <- input_list$tuning_parameters
+  hyperparameters <- input_list$hyperparameters
+
+  refresh <- (input_list$refresh > 0)*ceiling(iter/4)
+  max_grid <- input_list$max_grid
+  CntlOnly <- input_list$CntlOnly
+  G_compute <- input_list$G_compute
+
+  stdz <- input_list$stdz
+  time_grid <- input_list$time_grid
+
+  keep_bin_files <- input_list$keep_bin_files
+
+  ## Every chain gets a separate file suffix.
+  sfx <- input_list$sfx %,% "_" %,% k
+
+  fnm_cnd_haz_0 <- input_list$fnm_cnd_haz_0 %,% "_" %,% sfx %,% "_wb.bin"
+  fnm_cnd_cumHz_0 <- input_list$fnm_cnd_cumHz_0 %,% "_" %,% sfx %,% "_wb.bin"
+  fnm_lml_mgnl_surv_0 <- input_list$fnm_lml_mgnl_surv_0 %,% "_" %,% sfx %,% "_wb.bin"
+  fnm_lml_mgnl_surv_1 <- input_list$fnm_lml_mgnl_surv_1 %,% "_" %,% sfx %,% "_wb.bin"
+  fnm_mgnl_haz_0 <- input_list$fnm_mgnl_haz_0 %,% "_" %,% sfx %,% "_wb.bin"
+  fnm_mgnl_haz_1 <- input_list$fnm_mgnl_haz_1 %,% "_" %,% sfx %,% "_wb.bin"
+
+  ## ---------------------------------------------------------------
+  ## Constants derived from inputs
+  ## ---------------------------------------------------------------
+  a_lambda <- tuning_parameters$a_lambda
+  b_lambda <- tuning_parameters$b_lambda
+  cprop_beta <- tuning_parameters$cprop_beta
+  pi_b <- tuning_parameters$pi_b
+  alpha <- tuning_parameters$alpha
+
+  a_sigma <- hyperparameters$a_sigma
+  b_sigma <- hyperparameters$b_sigma
+  clam <- hyperparameters$clam_smooth
+  phi <- hyperparameters$phi
+  a_tau <- hyperparameters$a_tau
+  b_tau <- hyperparameters$b_tau
+  type <- hyperparameters$type
+  Jmax <- hyperparameters$Jmax
+
+  if (!is.null(X_0)) {
+    cprop_beta_0 <- tuning_parameters$cprop_beta_0
+  }
+
+  bp <- ncol(X)
+  bp_0 <- ncol(X_0)
+  maxSj <- min(max(Y), max(Y_0))
+
+  beta_prior <- hyperparameters$beta_prior
+  beta_prior_prec <- diag(1 / beta_prior, bp)
+
+  if (bp_0 > 0) {
+    beta_0_prior <- hyperparameters$beta_0_prior
+    beta_0_prior_prec <- diag(1 / beta_0_prior, bp_0)
+  }
+
+  if (type == "mix") {
+    c_tau <- hyperparameters$c_tau
+    d_tau <- hyperparameters$d_tau
+    p_0 <- hyperparameters$p_0
+  } else if (type == "uni") {
+    c_tau <- NULL
+    d_tau <- NULL
+    p_0 <- NULL
+  } else {
+    c_tau <- hyperparameters$c_tau
+    d_tau <- hyperparameters$d_tau
+    p_0 <- hyperparameters$p_0
+  }
+
+  ## ---------------------------------------------------------------
+  ## Initialize a fresh warmup chain or restore an existing state
+  ## ---------------------------------------------------------------
+  if (isTRUE(initial_states$initialize)) {
+
+    ## Move the following initialization block from GibbsMH_wborrow
+    ## into this location:
+    ##
+    ## - J and sigma2 initial values
+    ## - Y_mix, quantiles, s
+    ## - group_data_cc and group_data_hist
+    ## - lambda_init and lambda_init_hist
+    ## - lambda and lambda_0
+    ## - mu and sigma2
+    ## - df_curr and df_hist
+    ## - beta and beta_0
+    ## - tau
+    ## - acceptance/move counters
+    ##
+    ## The resulting objects must be:
+    ## J, s, lambda, lambda_0, mu, sigma2, tau, beta, beta_0,
+    ## df_curr, df_hist, lambda_count, lambda_move,
+    ## lambda_0_count, lambda_0_move, beta_count, beta_0_count.
+
+    lambda_0_count <- 0
+    lambda_count <- 0
+    lambda_move <- 0
+    lambda_0_move <- 0
+
+    J <- phi
+    sigma2 <- b_sigma / (a_sigma + 1)
+
+    Y_mix <- Y[Y < max(Y_0)]
+    quantiles <- quantile(
+      Y_mix,
+      probs = seq(0, 1, length.out = J + 2),
+      na.rm = TRUE,
+      names = FALSE
+    )
+
+    s <- c(0, quantiles[1:J + 1], max(Y, Y_0))
+
+    if (length(unique(s)) < length(s)) {
+      J <- 1
+      s <- c(0, max(Y, Y_0), max(Y))
+    }
+
+    group_data_cc <- group_summary(Y[X[, 1] == 0], I[X[, 1] == 0], NULL, s)
+    group_data_hist <- group_summary(Y_0, I_0, NULL, s)
+
+    lambda_init <- init_lambda_hyperparameters(group_data_cc, s)
+    lambda_init_hist <- init_lambda_hyperparameters(group_data_hist, s)
+
+    lambda <- mapply(
+      stats::rgamma,
+      n = 1,
+      shape = lambda_init$shape,
+      rate = lambda_init$rate
+    )
+
+    lambda_0 <- mapply(
+      stats::rgamma,
+      n = 1,
+      shape = lambda_init_hist$shape,
+      rate = lambda_init_hist$rate
+    )
+
+    lambda_init_sum_hist <- init_lambda_hyperparameters(
+      lapply(group_data_hist, sum),
+      s[c(1, J + 2)]
+    )
+
+    mu <- mean(log(mapply(
+      stats::rgamma,
+      n = 500,
+      shape = lambda_init_sum_hist$shape,
+      rate = lambda_init_sum_hist$rate
+    )))
+
+    sigma2 <- var(log(mapply(
+      stats::rgamma,
+      n = 500,
+      shape = lambda_init_sum_hist$shape,
+      rate = lambda_init_sum_hist$rate
+    )))
+
+    df_curr <- dataframe_fun(
+      Y = Y,
+      I = I,
+      X = X,
+      s = s,
+      lambda = lambda,
+      bp = bp,
+      J = J
+    )
+
+    if (bp_0 == 0) {
+      beta_0 <- NULL
+      df_hist <- dataframe_fun(
+        Y = Y_0,
+        I = I_0,
+        X = X_0,
+        s = s,
+        lambda = lambda_0,
+        bp = bp_0,
+        J = J
+      )
+      beta_0_count <- NULL
+    } else {
+      df_hist <- dataframe_fun(
+        Y = Y_0,
+        I = I_0,
+        X = X_0,
+        s = s,
+        lambda = lambda_0,
+        bp = bp_0,
+        J = J
+      )
+
+      glm.mom_0 <- glmFit(df_hist)
+      beta_0 <- glm.mom_0$beta.mu
+      beta_0_count <- 0
+    }
+
+    glm.mom <- glmFit(df_curr)
+    beta <- glm.mom$beta.mu
+    beta_count <- 0
+
+    if (type == "mix") {
+      tau <- p_0 * invgamma::rinvgamma(J + 1, shape = a_tau, rate = b_tau) +
+        (1 - p_0) * invgamma::rinvgamma(J + 1, shape = c_tau, rate = d_tau)
+    } else if (type == "uni") {
+      tau <- invgamma::rinvgamma(J + 1, shape = a_tau, rate = b_tau)
+    } else {
+      tau <- p_0 * invgamma::rinvgamma(1, shape = a_tau, rate = b_tau) +
+        (1 - p_0) * invgamma::rinvgamma(1, shape = c_tau, rate = d_tau)
+    }
+
+  } else {
+
+    J <- initial_states$J
+    s <- initial_states$s
+    lambda <- initial_states$lambda
+    lambda_0 <- initial_states$lambda_0
+    mu <- initial_states$mu
+    sigma2 <- initial_states$sigma2
+    tau <- initial_states$tau
+    beta <- initial_states$beta
+    beta_0 <- initial_states$beta_0
+
+    df_curr <- initial_states$df_curr
+    df_hist <- initial_states$df_hist
+
+    lambda_count <- initial_states$lambda_count
+    lambda_move <- initial_states$lambda_move
+    lambda_0_count <- initial_states$lambda_0_count
+    lambda_0_move <- initial_states$lambda_0_move
+    beta_count <- initial_states$beta_count
+    beta_0_count <- initial_states$beta_0_count
+  }
+
+  ## ---------------------------------------------------------------
+  ## Allocate sampling outputs only for non-warmup chains
+  ## ---------------------------------------------------------------
+  if (!is_warmup) {
+
+    nmsB <- dimnames(X)[[2]]
+
+    samples <- data.frame(
+      matrix(NA_real_, nrow = 0, ncol = bp + bp_0 + 3)
+    )
+
+    if (bp > 0) {
+      colnames(samples)[1:bp] <- nmsB
+    }
+
+    if (bp_0 > 0) {
+      nmsB_0 <- dimnames(X_0)[[2]] %,% "_0"
+      colnames(samples)[(bp + 1):(bp + bp_0)] <- nmsB_0
+    }
+
+    colnames(samples)[bp + bp_0 + (1:3)] <- c("J", "mu", "sigma2")
+
+    out_lambda <- data.frame(matrix(NA_real_, nrow = 0, ncol = Jmax + 1))
+    out_lambda_0 <- data.frame(matrix(NA_real_, nrow = 0, ncol = Jmax + 1))
+    out_s <- data.frame(matrix(NA_real_, nrow = 0, ncol = Jmax + 2))
+
+    if (type %in% c("uni", "mix")) {
+      out_tau <- data.frame(matrix(NA_real_, nrow = 0, ncol = Jmax + 1))
+    } else {
+      out_tau <- data.frame(matrix(NA_real_, nrow = 0, ncol = 1))
+      colnames(out_tau) <- NULL
+    }
+
+    conn3 <- list(
+      cnd_haz_0 = file(fnm_cnd_haz_0, "wb"),
+      cnd_cumHz_0 = file(fnm_cnd_cumHz_0, "wb")
+    )
+
+    if (bp > 1 && !CntlOnly) {
+      n <- nrow(X)
+
+      conAX <- as.matrix(X[, -1, drop = FALSE])
+      trtAX <- cbind(rep(1, n), as.matrix(X[, -1, drop = FALSE]))
+
+      w_sxn_con <- extraDistr::rdirichlet(iter, rep(1, n))
+      w_sxn_trt <- extraDistr::rdirichlet(iter, rep(1, n))
+
+      conn3$lml_mgnl_surv_0 <- file(fnm_lml_mgnl_surv_0, "wb")
+      conn3$mgnl_haz_0 <- file(fnm_mgnl_haz_0, "wb")
+      conn3$lml_mgnl_surv_1 <- file(fnm_lml_mgnl_surv_1, "wb")
+      conn3$mgnl_haz_1 <- file(fnm_mgnl_haz_1, "wb")
+    }
+
+    on.exit(
+      invisible(lapply(conn3, function(con) {
+        if (inherits(con, "connection")) {
+          try(close(con), silent = TRUE)
+        }
+      })),
+      add = TRUE
+    )
+  }
+
+  ## ---------------------------------------------------------------
+  ## MCMC loop
+  ## ---------------------------------------------------------------
+  for (i in seq_len(iter)) {
+
+    if (is_warmup) {
+      if (refresh != 0 && i %% refresh == 0)               
+        message(sprintf("Iteration: %d / %d (Warmup)", i, iter))
+    } else {
+      msg <- ""
+      if (refresh != 0 && i %% refresh == 0)
+        msg <- sprintf("Iteration: %d (Sampling chain %d)", i, k)           
+        p(msg)
+    }
+
+    ICAR <- ICAR_calc(s = s, J = J, clam = clam)
+    Sigma_s <- ICAR$Sigma_s
+
+    mu <- mu_update(Sigma_s, lambda_0, sigma2, J)
+    sigma2 <- sigma2_update(mu, lambda_0, Sigma_s, J, a_sigma, b_sigma)
+
+    tau_all <- tau_update(
+      lambda_0, lambda, J, s,
+      a_tau, b_tau, c_tau, d_tau, p_0, type
+    )
+    tau <- tau_all$tau
+
+    beta_all <- beta_MH_NR_vec(
+      df_curr, beta, beta_prior_prec, bp, cprop_beta, beta_count
+    )
+    beta <- beta_all$beta
+    beta_count <- beta_all$beta_count
+
+    if (bp_0 > 0) {
+      beta_0_all <- beta_MH_NR_vec(
+        df_hist,
+        beta_0,
+        beta_0_prior_prec,
+        bp = bp_0,
+        cprop_beta = cprop_beta_0,
+        beta_count = beta_0_count
+      )
+
+      beta_0 <- beta_0_all$beta
+      beta_0_count <- beta_0_all$beta_count
+    }
+
+    df_lambda_0 <- lambda_0_MH_cp(
+      df_hist, Y_0, I_0, X_0, s,
+      beta_0, mu, sigma2, lambda, lambda_0, tau,
+      bp_0, J, clam,
+      a_lam = a_lambda,
+      b_lam = b_lambda,
+      lambda_0_count,
+      lambda_0_move
+    )
+
+    lambda_0 <- df_lambda_0$lambda_0
+    lambda_0_move <- df_lambda_0$lambda_0_move
+    lambda_0_count <- df_lambda_0$lambda_0_count
+    df_hist <- df_lambda_0$df_hist
+
+    df_lambda <- lambda_MH_cp(
+      df_hist, df_curr, Y, I, X, s,
+      beta, beta_0, mu, sigma2, lambda, lambda_0, tau,
+      bp, bp_0, J,
+      a_lam = a_lambda,
+      b_lam = b_lambda,
+      lambda_move,
+      lambda_count,
+      alpha
+    )
+
+    lambda <- df_lambda$lambda
+    lambda_move <- df_lambda$lambda_move
+    lambda_count <- df_lambda$lambda_count
+    df_curr <- df_lambda$df_curr
+
+    if (J > 0) {
+      swap_df <- shuffle_split_point_location(
+        df_hist, df_curr, Y_0, I_0, X_0,
+        lambda_0, beta_0,
+        Y, I, X, lambda, beta,
+        s, J, bp_0, bp, clam, maxSj
+      )
+
+      s <- swap_df$s
+      Sigma_s <- swap_df$Sigma_s
+      df_hist <- swap_df$df_hist
+      df_curr <- swap_df$df_curr
+    }
+
+    rjmcmc_out <- J_RJMCMC(
+      df_hist, df_curr, Y, Y_0, I, I_0, X, X_0,
+      lambda, lambda_0, beta, beta_0,
+      mu, sigma2, tau, s, J, Jmax,
+      bp, bp_0, clam,
+      a_tau, b_tau, c_tau, d_tau, type,
+      p_0, phi, pi_b, maxSj
+    )
+
+    J <- rjmcmc_out$J
+    s <- rjmcmc_out$s
+    lambda <- rjmcmc_out$lambda
+    lambda_0 <- rjmcmc_out$lambda_0
+    Sigma_s <- rjmcmc_out$Sigma_s
+    df_hist <- rjmcmc_out$df_hist
+    df_curr <- rjmcmc_out$df_curr
+
+    if (type %in% c("uni", "mix")) {
+      tau <- rjmcmc_out$tau
+    }
+
+    ## Warmup iterations update state but are not retained.
+    if (!is_warmup) {
+
+      samples[i, 1:bp] <- beta
+
+      if (bp_0 > 0) {
+        samples[i, (bp + 1):(bp + bp_0)] <- beta_0
+      }
+
+      samples[i, bp + bp_0 + 1] <- J
+      samples[i, bp + bp_0 + 2] <- mu
+      samples[i, bp + bp_0 + 3] <- sigma2
+
+      out_lambda[i, seq_along(lambda)] <- lambda
+      out_lambda_0[i, seq_along(lambda_0)] <- lambda_0
+      out_s[i, seq_along(s)] <- s
+      out_tau[i, seq_along(tau)] <- tau
+
+      indx <- findInterval(time_grid, s, left.open = TRUE)
+      lambda_s <- lambda[indx]
+      writeBin(lambda_s, conn3$cnd_haz_0)
+
+      dt <- diff(time_grid)[1]
+      cnd_cumHz_0 <- cumsum(lambda_s) * dt
+      writeBin(cnd_cumHz_0, conn3$cnd_cumHz_0)
+
+      if (bp > 1 && !CntlOnly) {
+        lml_mgnl_surv_0 <- lml_mgnl_surv_fn(
+          conAX,
+          beta[-1],
+          cnd_cumHz_0,
+          w_sxn_con[i, ]
+        )
+
+        writeBin(lml_mgnl_surv_0, conn3$lml_mgnl_surv_0)
+
+        mgnl_cumHz_0 <- exp(lml_mgnl_surv_0)
+        mgnl_haz_0 <- DX(mgnl_cumHz_0) / dt
+        writeBin(mgnl_haz_0, conn3$mgnl_haz_0)
+
+        lml_mgnl_surv_1 <- lml_mgnl_surv_fn(
+          trtAX,
+          beta,
+          cnd_cumHz_0,
+          w_sxn_trt[i, ]
+        )
+
+        writeBin(lml_mgnl_surv_1, conn3$lml_mgnl_surv_1)
+
+        mgnl_cumHz_1 <- exp(lml_mgnl_surv_1)
+        mgnl_haz_1 <- DX(mgnl_cumHz_1) / dt
+        writeBin(mgnl_haz_1, conn3$mgnl_haz_1)
+      }
+    }
+  }
+
+  ## Explicitly close worker files before returning.
+  if (!is_warmup) {
+    invisible(lapply(conn3, close))
+  }
+
+  ## ---------------------------------------------------------------
+  ## Return continuation state and chain-specific retained output
+  ## ---------------------------------------------------------------
+  state_current_vals <- list(
+    J = J,
+    s = s,
+    lambda = lambda,
+    lambda_0 = lambda_0,
+    mu = mu,
+    sigma2 = sigma2,
+    tau = tau,
+    beta = beta,
+    beta_0 = beta_0,
+    df_curr = df_curr,
+    df_hist = df_hist,
+    lambda_count = lambda_count,
+    lambda_move = lambda_move,
+    lambda_0_count = lambda_0_count,
+    lambda_0_move = lambda_0_move,
+    beta_count = beta_count,
+    beta_0_count = beta_0_count
+  )
+
+  if (is_warmup) {
+    other_outputs <- NULL
+  } else {
+    other_outputs <- list(
+      samples = samples,
+      lambda = out_lambda,
+      lambda_0 = out_lambda_0,
+      s = out_s,
+      tau = out_tau,
+      fnms = c(
+        cnd_haz_0 = fnm_cnd_haz_0,
+        cnd_cumHz_0 = fnm_cnd_cumHz_0,
+        lml_mgnl_surv_0 = fnm_lml_mgnl_surv_0,
+        lml_mgnl_surv_1 = fnm_lml_mgnl_surv_1,
+        mgnl_haz_0 = fnm_mgnl_haz_0,
+        mgnl_haz_1 = fnm_mgnl_haz_1
+      )
+    )
+  }
+
+  list(
+    state_current_vals = state_current_vals,
+    other_outputs = other_outputs
+  )
+}
+
+GibbsMH_noborrow_chain <- function(input_list,
+                                   initial_states,
+                                   iter,
+                                   is_warmup,
+                                   k,
+                                   p) {
+
+  ## ---------------------------------------------------------------
+  ## Unpack invariant inputs
+  ## ---------------------------------------------------------------
+  Y <- input_list$Y
+  I <- input_list$I
+  X <- input_list$X
+
+  tuning_parameters <- input_list$tuning_parameters
+  hyperparameters <- input_list$hyperparameters
+
+  refresh <- (input_list$refresh > 0)*ceiling(iter/4)
+  max_grid <- input_list$max_grid
+  CntlOnly <- input_list$CntlOnly
+  G_compute <- input_list$G_compute
+  time_grid <- input_list$time_grid
+
+  ## Child-specific suffix. k = 0 is reserved for warmup, although
+  ## warmup does not write retained sample binary files.
+  sfx <- input_list$sfx %,% "_" %,% k
+
+  fnm_cnd_haz_0 <- input_list$fnm_cnd_haz_0 %,% "_" %,% sfx %,% "_wb.bin"
+  fnm_cnd_cumHz_0 <- input_list$fnm_cnd_cumHz_0 %,% "_" %,% sfx %,% "_wb.bin"
+  fnm_lml_mgnl_surv_0 <- input_list$fnm_lml_mgnl_surv_0 %,% "_" %,% sfx %,% "_wb.bin"
+  fnm_lml_mgnl_surv_1 <- input_list$fnm_lml_mgnl_surv_1 %,% "_" %,% sfx %,% "_wb.bin"
+  fnm_mgnl_haz_0 <- input_list$fnm_mgnl_haz_0 %,% "_" %,% sfx %,% "_wb.bin"
+  fnm_mgnl_haz_1 <- input_list$fnm_mgnl_haz_1 %,% "_" %,% sfx %,% "_wb.bin"
+
+  ## ---------------------------------------------------------------
+  ## Hyperparameters and tuning parameters
+  ## ---------------------------------------------------------------
+  a_lambda <- tuning_parameters$a_lambda
+  b_lambda <- tuning_parameters$b_lambda
+  cprop_beta <- tuning_parameters$cprop_beta
+  pi_b <- tuning_parameters$pi_b
+
+  a_sigma <- hyperparameters$a_sigma
+  b_sigma <- hyperparameters$b_sigma
+  clam_smooth <- hyperparameters$clam_smooth
+  phi <- hyperparameters$phi
+  Jmax <- hyperparameters$Jmax
+
+  bp <- ncol(X)
+
+  if (bp > 0) {
+    beta_prior <- hyperparameters$beta_prior
+    beta_prior_prec <- diag(1 / beta_prior, bp)
+  }
+
+  ## ---------------------------------------------------------------
+  ## Initialize a new chain or restore post-warmup state
+  ## ---------------------------------------------------------------
+  if (isTRUE(initial_states$initialize)) {
+
+    lambda_count <- 0
+    lambda_move <- 0
+
+    J <- phi
+    sigma2 <- b_sigma / (a_sigma + 1)
+
+    quantiles <- quantile(
+      Y,
+      probs = seq(0, 1, length.out = J + 2),
+      na.rm = TRUE,
+      names = FALSE
+    )
+
+    s <- c(0, quantiles[1:J + 1], max(Y))
+
+    if (length(unique(s)) < length(s)) {
+      J <- 1
+      s <- c(0, max(Y) / 2, max(Y))
+    }
+
+    group_data <- group_summary(Y, I, NULL, s)
+
+    lambda_init <- init_lambda_hyperparameters(group_data, s)
+
+    lambda <- mapply(
+      stats::rgamma,
+      n = 1,
+      shape = lambda_init$shape,
+      rate = lambda_init$rate
+    )
+
+    lambda_init_sum <- init_lambda_hyperparameters(
+      lapply(group_data, sum),
+      s[c(1, J + 2)]
+    )
+
+    log_hazard_sample <- log(
+      mapply(
+        stats::rgamma,
+        n = 500,
+        shape = lambda_init_sum$shape,
+        rate = lambda_init_sum$rate
+      )
+    )
+
+    mu <- mean(log_hazard_sample)
+    sigma2 <- var(log_hazard_sample)
+
+    beta_count <- 0
+
+    if (bp == 0) {
+
+      beta <- NULL
+
+      df_all <- dataframe_fun(
+        Y = Y,
+        I = I,
+        X = NULL,
+        s = s,
+        lambda = lambda,
+        bp = 0,
+        J = J
+      )
+
+    } else {
+
+      df_all <- dataframe_fun(
+        Y = Y,
+        I = I,
+        X = X,
+        s = s,
+        lambda = lambda,
+        bp = bp,
+        J = J
+      )
+
+      glm.mom <- glmFit(df_all)
+
+      beta <- glm.mom$beta.mu
+      beta_count <- numeric(bp)
+    }
+
+  } else {
+
+    J <- initial_states$J
+    s <- initial_states$s
+    lambda <- initial_states$lambda
+    mu <- initial_states$mu
+    sigma2 <- initial_states$sigma2
+    beta <- initial_states$beta
+    df_all <- initial_states$df_all
+
+    lambda_count <- initial_states$lambda_count
+    lambda_move <- initial_states$lambda_move
+    beta_count <- initial_states$beta_count
+  }
+
+  ## ---------------------------------------------------------------
+  ## Allocate retained-output objects and binary files.
+  ##
+  ## Warmup updates state only. It does not retain samples or write
+  ## binary files.
+  ## ---------------------------------------------------------------
+  if (!is_warmup) {
+
+    nmsB <- dimnames(X)[[2]]
+
+    samples <- data.frame(
+      matrix(
+        NA_real_,
+        nrow = iter,
+        ncol = bp + 3
+      )
+    )
+
+    if (bp > 0) {
+      colnames(samples)[1:bp] <- nmsB
+    }
+
+    colnames(samples)[bp + (1:3)] <- c("J", "mu", "sigma2")
+
+    out_lambda <- data.frame(
+      matrix(
+        NA_real_,
+        nrow = iter,
+        ncol = Jmax + 1
+      )
+    )
+
+    out_s <- data.frame(
+      matrix(
+        NA_real_,
+        nrow = iter,
+        ncol = Jmax + 2
+      )
+    )
+
+    conn3 <- list(
+      cnd_haz_0 = file(fnm_cnd_haz_0, "wb"),
+      cnd_cumHz_0 = file(fnm_cnd_cumHz_0, "wb")
+    )
+
+    if (bp > 1 && !CntlOnly) {
+
+      n <- nrow(X)
+
+      conAX <- as.matrix(X[, -1, drop = FALSE])
+      trtAX <- cbind(
+        rep(1, n),
+        as.matrix(X[, -1, drop = FALSE])
+      )
+
+      w_sxn_con <- extraDistr::rdirichlet(iter, rep(1, n))
+      w_sxn_trt <- extraDistr::rdirichlet(iter, rep(1, n))
+
+      conn3$lml_mgnl_surv_0 <- file(fnm_lml_mgnl_surv_0, "wb")
+      conn3$mgnl_haz_0 <- file(fnm_mgnl_haz_0, "wb")
+      conn3$lml_mgnl_surv_1 <- file(fnm_lml_mgnl_surv_1, "wb")
+      conn3$mgnl_haz_1 <- file(fnm_mgnl_haz_1, "wb")
+    }
+
+    on.exit(
+      invisible(
+        lapply(conn3, function(con) {
+          if (inherits(con, "connection")) {
+            try(close(con), silent = TRUE)
+          }
+        })
+      ),
+      add = TRUE
+    )
+  }
+
+  ## ---------------------------------------------------------------
+  ## MCMC sampler
+  ## ---------------------------------------------------------------
+  for (i in seq_len(iter)) {
+
+    if (is_warmup) {
+      if (refresh != 0 && i %% refresh == 0)
+        message(sprintf("Iteration: %d (Warmup)", i))
+    } else {
+      msg <- ""
+      if (refresh != 0 && i %% refresh == 0)
+        msg <- sprintf("Iteration: %d (Sampling chain %d)", i, k)
+      p(msg)
+    }
+
+    ICAR <- ICAR_calc(s, J, clam_smooth)
+    Sigma_s <- ICAR$Sigma_s
+
+    ## 1. Gibbs updates
+    mu <- mu_update(Sigma_s, lambda, sigma2, J)
+
+    sigma2 <- sigma2_update(
+      mu,
+      lambda,
+      Sigma_s,
+      J,
+      a_sigma,
+      b_sigma
+    )
+
+    ## 2. Beta MH update
+    if (bp > 0) {
+
+      beta_all <- beta_MH_NR(
+        df = df_all,
+        beta = beta,
+        beta_prior_prec = beta_prior_prec,
+        bp = bp,
+        cprop_beta = cprop_beta,
+        beta_count = beta_count
+      )
+
+      beta <- beta_all$beta
+      beta_count <- beta_all$beta_count
+    }
+
+    ## 3. Lambda MH update
+    dflambda <- lambda_0_MH_cp_NoBorrow(
+      df_all,
+      Y,
+      I,
+      X,
+      s,
+      beta,
+      mu,
+      sigma2,
+      lambda,
+      bp,
+      J,
+      clam_smooth,
+      a_lam = a_lambda,
+      b_lam = b_lambda,
+      lambda_count,
+      lambda_move
+    )
+
+    lambda <- dflambda$lambda_0
+    df_all <- dflambda$df
+    lambda_count <- dflambda$lambda_0_count
+    lambda_move <- dflambda$lambda_0_move
+
+    ## 4. Split-point location shuffle
+    if (J > 0) {
+
+      swap_df <- shuffle_split_point_location_NoBorrow(
+        df_all,
+        Y,
+        I,
+        X,
+        lambda,
+        beta,
+        s,
+        J,
+        bp,
+        clam_smooth
+      )
+
+      s <- swap_df$s
+      Sigma_s <- swap_df$Sigma_s
+      df_all <- swap_df$df_all
+    }
+
+    ## 5. Birth/death RJMCMC move
+    rjmcmc_out <- J_RJMCMC_NoBorrow(
+      df_all,
+      Y,
+      I,
+      X,
+      lambda,
+      beta,
+      mu,
+      sigma2,
+      s,
+      J,
+      Jmax,
+      bp,
+      clam_smooth,
+      phi,
+      pi_b
+    )
+
+    J <- rjmcmc_out$J
+    s <- rjmcmc_out$s
+    lambda <- rjmcmc_out$lambda
+    Sigma_s <- rjmcmc_out$Sigma_s
+    df_all <- rjmcmc_out$df_all
+
+    ## -------------------------------------------------------------
+    ## Retain post-warmup samples only
+    ## -------------------------------------------------------------
+    if (!is_warmup) {
+
+      if (bp > 0) {
+        samples[i, 1:bp] <- beta
+      }
+
+      samples[i, bp + 1] <- J
+      samples[i, bp + 2] <- mu
+      samples[i, bp + 3] <- sigma2
+
+      out_lambda[i, seq_along(lambda)] <- lambda
+      out_s[i, seq_along(s)] <- s
+
+      indx <- findInterval(time_grid, s, left.open = TRUE)
+      lambda_s <- lambda[indx]
+
+      writeBin(lambda_s, conn3$cnd_haz_0)
+
+      dt <- diff(time_grid)[1]
+      cnd_cumHz_0 <- cumsum(lambda_s) * dt
+
+      writeBin(cnd_cumHz_0, conn3$cnd_cumHz_0)
+
+      if (bp > 1 && !CntlOnly) {
+
+        lml_mgnl_surv_0 <- lml_mgnl_surv_fn(
+          conAX,
+          beta[-1],
+          cnd_cumHz_0,
+          w_sxn_con[i, ]
+        )
+
+        writeBin(
+          lml_mgnl_surv_0,
+          conn3$lml_mgnl_surv_0
+        )
+
+        mgnl_cumHz_0 <- exp(lml_mgnl_surv_0)
+        mgnl_haz_0 <- DX(mgnl_cumHz_0) / dt
+
+        writeBin(
+          mgnl_haz_0,
+          conn3$mgnl_haz_0
+        )
+
+        lml_mgnl_surv_1 <- lml_mgnl_surv_fn(
+          trtAX,
+          beta,
+          cnd_cumHz_0,
+          w_sxn_trt[i, ]
+        )
+
+        writeBin(
+          lml_mgnl_surv_1,
+          conn3$lml_mgnl_surv_1
+        )
+
+        mgnl_cumHz_1 <- exp(lml_mgnl_surv_1)
+        mgnl_haz_1 <- DX(mgnl_cumHz_1) / dt
+
+        writeBin(
+          mgnl_haz_1,
+          conn3$mgnl_haz_1
+        )
+      }
+    }
+  }
+
+  ## Ensure all child binary output is flushed before the child exits.
+  if (!is_warmup) {
+    invisible(lapply(conn3, close))
+  }
+
+  ## ---------------------------------------------------------------
+  ## State needed to continue this serial chain
+  ## ---------------------------------------------------------------
+  state_current_vals <- list(
+    J = J,
+    s = s,
+    lambda = lambda,
+    mu = mu,
+    sigma2 = sigma2,
+    beta = beta,
+    df_all = df_all,
+    lambda_count = lambda_count,
+    lambda_move = lambda_move,
+    beta_count = beta_count
+  )
+
+  ## ---------------------------------------------------------------
+  ## Output needed by the parent wrapper
+  ## ---------------------------------------------------------------
+  if (is_warmup) {
+
+    other_outputs <- NULL
+
+  } else {
+
+    other_outputs <- list(
+      samples = samples,
+      lambda = out_lambda,
+      s = out_s,
+      fnms = c(
+        cnd_haz_0 = fnm_cnd_haz_0,
+        cnd_cumHz_0 = fnm_cnd_cumHz_0,
+        lml_mgnl_surv_0 = fnm_lml_mgnl_surv_0,
+        lml_mgnl_surv_1 = fnm_lml_mgnl_surv_1,
+        mgnl_haz_0 = fnm_mgnl_haz_0,
+        mgnl_haz_1 = fnm_mgnl_haz_1
+      )
+    )
+  }
+
+  list(
+    state_current_vals = state_current_vals,
+    other_outputs = other_outputs
+  )
+}
+
+rel_eff <-
+  function(wb, nb, G_compute=FALSE) {
+      if(!G_compute)
+          ans <- (diff(coef(nb)[1,3:4])/diff(coef(wb)[1,3:4]))^2
+      if(G_compute)
+          ans <- (diff(unlist(MTE(nb)[4,5:6]))/diff(unlist(MTE(wb)[4,5:6])))^2
+      ans
+  }
+
+order_fnms <-
+function(string_list,
+           prtl_mtch = c("cnd_haz_0",
+                         "cumHz_0",
+                         "surv_0",
+                         "surv_1",
+                         "mgnl_haz_0",
+                         "mgnl_haz_1"
+                        )) {
+  ord_key <- vapply(
+    string_list,
+    function(x) {
+      hit <- which(vapply(
+        prtl_mtch,
+        grepl,
+        logical(1),
+        x = x,
+        fixed = TRUE
+      ))
+
+      if (length(hit) == 0L) Inf else hit[1L]
+    },
+    numeric(1)
+  )
+
+  order(ord_key, seq_along(string_list))
+}
+
+
+## extractors for objects of class BFBHBdat
+trial_data <- function(x) UseMethod("trial_data")
+trial_data.BFBHBdat <- function(x) x$DAT_cc
+historical_data <- function(x) UseMethod("historical_data")
+historical_data.BFBHBdat <- function(x) x$DAT_hst
 
 add.zeros <-
 function (x, B)
@@ -4023,17 +5929,22 @@ function (x, B)
 ## first element and diff of x
 DX <- function(x)c(x[1],diff(x))
 
-rand_hex_strng <-
-function(m)paste(sample(c(as.character(0:9), letters[1:6]), m, replace=TRUE), collapse="")
+rnd_hex_strng <-
+  function(m)paste(sample(c(as.character(0:9), letters[1:6]), m, replace=TRUE),
+                   collapse="")
 
-## bullshit repellent
-if (getRversion() >= "2.15.1")  utils::globalVariables(c("x", "y", "y.min", "y.max", "group", "iter"))
+## the need for this is truly annoying-- what is this fortran66?
+if (getRversion() >= "2.15.1")
+    utils::globalVariables(c("x", "y", "y_min", "y_max", "group", "iter",
+                             "treatment_effect", "iteration"))
 ##  Prints package name and version on load
 .onAttach <- function(libname, pkgname)
 {
     ver <- read.dcf(file=system.file("DESCRIPTION", package=pkgname), fields="Version")
     msg <- paste(pkgname, ver)
-    msg <- msg %,% "\n" %,% "Please cite this package in your work; see citation(\"BayesFBHborrow\") \n" %,%
-                              "or toBibtex(citation(\"BayesFBHborrow\")) \n"
+    msg <- msg %,%
+           "\n" %,%
+           "Please cite this package in your work; see citation(\"BayesFBHborrow\") \n" %,%
+           "or toBibtex(citation(\"BayesFBHborrow\")) \n"
     packageStartupMessage(msg)
 }

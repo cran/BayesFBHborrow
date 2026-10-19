@@ -1,5 +1,6 @@
 \name{update.BayesFBHborrow}
 \alias{update.BayesFBHborrow}
+\alias{update}
 \title{
  The Update Method for the \code{BayesFBHborrow} Class
 }
@@ -7,13 +8,19 @@
  The Update Method for the \code{BayesFBHborrow} Class
 }
 \usage{
-update.BayesFBHborrow(object, formula = NULL, data, data_hist = NULL,
-                      subset, na.action, CntlOnly = FALSE, model_choice = "mix",
-                      tuning_parameters = NULL, hyperparameters = NULL, iter = 1000,
-                      warmup_iter = 100, refresh = 0, verbose = FALSE, max_grid = 2000,
-                      standardise = TRUE, G_compute = FALSE, preprocess = TRUE,
-                      fnm_cnd_blh = "cnd_blh", fnm_mgnl_haz0 =  "mgnl_haz0",
-                      fnm_mgnl_haz1 = "mgnl_haz1", dbg = FALSE, ...) 
+\method{update}{BayesFBHborrow}(
+       object, formula = NULL, data, data_hist = NULL,
+       subset, na.action, CntlOnly = FALSE, model_choice = "mix",
+       tuning_parameters = NULL, hyperparameters = NULL, iter = 1000,
+       warmup_iter = 100, refresh = 0, verbose = FALSE, max_grid = 2000,
+       standardise = TRUE, G_compute = FALSE, preprocess = TRUE,
+       fnm_cnd_haz_0 = "cnd_haz_0", fnm_cnd_cumHz_0 = "cnd_cumHz_0",
+       fnm_lml_mgnl_surv_0 = "lml_mgnl_surv_0",
+       fnm_lml_mgnl_surv_1 = "lml_mgnl_surv_1",
+       fnm_mgnl_haz_0 =  "mgnl_haz_0",
+       fnm_mgnl_haz_1 = "mgnl_haz_1", sfx = NULL, keep_bin_files= FALSE,
+       n_chains = 1L, hpc_max_cores = 16, dbg = FALSE, evaluate = TRUE,
+       ...) 
 }
 \arguments{
   \item{object}{
@@ -126,49 +133,83 @@ update.BayesFBHborrow(object, formula = NULL, data, data_hist = NULL,
     interface together with \code{preprocess=FALSE}. This is the only
     way to include interactions.
   }
-  \item{fnm_cnd_blh}{
-    Binary files generated during run time which are given a default name
-    prefix with a random hex suffix. The collection of
+  \item{fnm_cnd_haz_0}{
+    name prefix with a random hex suffix. The collection of
     "snapped to common grid" samples from the posterior distribution of
     the baseline hazards is a matrix of dimension \code{max_grid} by
     \code{iter}. Adding updated columns to this very large matrix would
     result in memory caching and for this reason, these are written out
     to binary files during the run of the MCMC, and then read back in
-    during the final sumarization. This file is for the conditional
-    baseline hazard. These files are available to the user for computing
-    any functional of the posterior distribution. See the documentation
-    for the \code{read_haz_mcmc_smpls} function.
+    during the final sumarization. These files are written to a hidden
+    subdirectory named \code{.xxxxxx} (dot randome hex string) in the
+    current working directory. Their complete paths are stored in the
+    resulting object and are available to the user for computing any
+    downstream functional of the posterior distribution. See the
+    documentation for the \code{read_haz_mcmc_smpls} function. This file
+    contains samples of the conditional baseline hazard. These are given
+    default names so there's no need to specify them. Default behavior
+    is to delete them unless the user specifies otherwise (see below).
   }
-  \item{fnm_mgnl_haz0}{
-    Binary files generated during run time which are given a default name
-    prefix with a random hex suffix. The collection of
-    "snapped to common grid" samples from the posterior distribution of
-    the baseline hazards is a matrix of dimension \code{max_grid} by
-    \code{iter}. Adding updated columns to this very large matrix would
-    result in memory caching and for this reason, these are written out
-    to binary files during the run of the MCMC, and then read back in
-    during the final sumarization. This file is for the control arm
-    log-log marginal hazard. These files are available to the user for
-    computing any functional of the posterior distribution. See the
-    documentation for the \code{read_haz_mcmc_smpls} function.
+  \item{fnm_cnd_cumHz_0}{
+    (see above) This file contains samples of the conditional baseline
+    cumulative hazard.
   }
-  \item{fnm_mgnl_haz1}{
-    Binary files generated during run time which are given a default name
-    prefix with a random hex suffix. The collection of
-    "snapped to common grid" samples from the posterior distribution of
-    the baseline hazards is a matrix of dimension \code{max_grid} by
-    \code{iter}. Adding updated columns to this very large matrix would
-    result in memory caching and for this reason, these are written out
-    to binary files during the run of the MCMC, and then read back in
-    during the final sumarization. This file is for the treated arm
-    log-log marginal hazard. These files are available to the user for
-    computing any functional of the posterior distribution. See the
-    documentation for the \code{read_haz_mcmc_smpls} function.
+  \item{fnm_lml_mgnl_surv_0}{
+    (see above) This file contains samples of the logged negative logged
+    control arm marginal survival function.
+  }
+  \item{fnm_lml_mgnl_surv_1}{
+    (see above) This file contains samples of the logged negative logged
+    treated arm marginal survival function.
+  }
+  \item{fnm_mgnl_haz_0}{
+    (see above) This file contains samples of the control arm marginal
+    hazard which have been derived as the finite difference quotient of
+    the exponentiated values in the lml_mgnl_surv_0 file.
+  }
+  \item{fnm_mgnl_haz_1}{
+    (see above) This file contains samples of the treated arm marginal
+    hazard which have been derived as the finite difference quotient of
+    the exponentiated values in the lml_mgnl_surv_0 file. 
+  }
+  \item{sfx}{
+    The name of the subdirectory created in the current working
+    directory to contain these binary files. Also used in the suffix of
+    the file names. The default behavior is to give this a random 6
+    digit hex string so there's no need to specify this argument either.
+  }
+  \item{keep_bin_files}{
+    Defaults to \code{FALSE} as the default behavior is to delete the
+    entire temp binary file directory when the run concludes. If the
+    user wishes to perform downstream calculation using the full set
+    of MCMC/MH sampled functions snapped to the finely spaced grid
+    then set this to \code{TRUE} and then use
+    \code{read_haz_mcmc_samples} (see below). 
+  }
+  \item{n_chains}{
+    Number of chains to sample in parallel post warmup. This is
+    determined automatically by the function depending on the
+    capabilities of your machine and the OS you are using
+    (unix alike [mac/WSL], HPC cluster, or windows). No need
+    to set this
+  }
+  \item{hpc_max_cores}{
+    If you use the HPC cluster either in the workbench or
+    setting up an interactive node the command line you should
+    request 'Rstudio large' and then set the number of cores to
+    anything up to 32. You should request 16GB of ram so you might
+    have to play with setting until you're given permission to open the
+    session. At AZ I've had success with 16GB and 16 cores. In
+    any case, set this to the number of cores you're able to get. 
   }
   \item{dbg}{
     When running in command line mode, set to \code{TRUE} in order to
     enable line by line debugging.
   }
+  \item{evaluate}{
+    controls whether the modified model call is executed immediately
+    or just returned as an expressionaluate
+  }    
   \item{\dots}{
     Other arguments as needed.
   }
@@ -186,11 +227,11 @@ update.BayesFBHborrow(object, formula = NULL, data, data_hist = NULL,
   An object of class \code{BayesFBHborrow}. See the documentation.
 }
 \references{
-  Scott DAV and Lewin A (2026). Borrowing from historical
+  Scott D.A.V. and Lewin A (2026). Borrowing from historical
   control data in a Bayesian time-to-event model with flexible baseline 
   hazard function. Biostatistics 27(1)
 
-  Scott DAV, Axillus S, Lewin A and Izmirlian G. 
+  Scott D.A.V., Axillus S, Lewin A and Izmirlian G. 
   BayesFBHborrow: An R Package for Bayesian borrowing for time-to-event
   data from a flexible baseline hazard function (2026)
   <doi:10.48550/arXiv.2408.04327> 

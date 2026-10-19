@@ -114,8 +114,8 @@ genBFBHBdat(n_cc_1, n_cc_0, n_hst, B_trt, B_x_cc, int_cc, B_x_hst,
                     int_cc=int_cc, int_hst=int_hst, shape=2,
                     t_er=0.5, t_fin=1.5, X_fact_levs=3)
 
-    DAT_cc <- dat_lst$DAT_cc
-    DAT_hst <- dat_lst$DAT_hst
+    DAT_cc <- trial_data(dat_lst)
+    DAT_hst <- historical_data(dat_lst)
 }
 \concept{Bayesian borrowing}
 \concept{flexible baseline hazard}

@@ -8,7 +8,8 @@ The plot method for the BayesFBHborrow class which allows quick
 convenient plots of important model summaries. 
 }
 \usage{
-\method{plot}{BayesFBHborrow}(x, type = c("survival", "hazard", "trace", "TrtEff"),
+\method{plot}{BayesFBHborrow}(x, type = c("survival", "cumulative hazard",
+                                          "hazard", "trace", "TrtEff"),
                               col = NULL, InfFrac = NULL, ylim = NULL, ...)
 }
 \arguments{
@@ -16,8 +17,8 @@ convenient plots of important model summaries.
     An object of class \code{BayesFBHborrow}.
   }
   \item{type}{
-    The type of plot desired. Can be one of the following "survival", "hazard",
-    "trace", "TrtEff".  
+    The type of plot desired. Can be one of the following "survival",
+    "cumulative hazard", "hazard", "trace", "TrtEff".  
   }
   \item{col}{
     When \code{type="trace"} is specified you must name a column of the
@@ -34,7 +35,7 @@ convenient plots of important model summaries.
     Sometimes in \code{type="hazard"} plots the credible interval
     ribbons become obnoxious. Hence, this argument. Set to c(0, Mx). 
   }
-  \item{...}{
+  \item{\dots}{
     Additional arguments to generic plot function
   } 
 }

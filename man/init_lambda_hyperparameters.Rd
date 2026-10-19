@@ -49,8 +49,8 @@
                     int_cc=int_cc, int_hst=int_hst, shape=2,
                     t_er=0.5, t_fin=1.5, X_fact_levs=3)
 
-    DAT_cc <- dat_lst$DAT_cc
-    DAT_hst <- dat_lst$DAT_hst    
+    DAT_cc <- trial_data(dat_lst)
+    DAT_hst <- historical_data(dat_lst)
     
     ## Say we want to know the group level data for the following split points
     s <- with(DAT_cc, quantile(tte, c(0, 0.45, 0.65, 1), names = FALSE))

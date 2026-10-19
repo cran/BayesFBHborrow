@@ -36,9 +36,7 @@
 \examples{
 ## Suppose p0tp is defined elsewhere
 ## Find a root for specific parameters:
-  \dontrun{
-    xifinder(b_tau = 0.1, d_tau = 1, p_0 = 0.75)
-  }
+  xifinder(b_tau = 0.1, d_tau = 1, p_0 = 0.75)
 }
 \concept{Bayesian borrowing}
 \concept{flexible baseline hazard}

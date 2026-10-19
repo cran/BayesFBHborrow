@@ -1,24 +1,25 @@
 \name{coef.BayesFBHborrow}
 \alias{coef.BayesFBHborrow}
+\alias{coef}
 \alias{coefficients}
 \title{
-The coefficients extractor method for the \code{BayesFBHborrow} class
+  The coefficients extractor method for the \code{BayesFBHborrow} class
 }
 \description{
-The coefficients extractor method for the \code{BayesFBHborrow} class
-with functionality dependent upon whether you select the conditional
-estimand or marginal contrast.
+  The coefficients extractor method for the \code{BayesFBHborrow} class
+  with functionality dependent upon whether you select the conditional
+  estimand or marginal contrast.
 }
 \usage{
-coef.BayesFBHborrow(object, ...)
+  \method{coef}{BayesFBHborrow}(object, ...)
 }
 \arguments{
   \item{object}{
     An object of class \code{BayesFBHborrow}
-}
+  }
   \item{\dots}{
     Not used    
-}
+  }
 }
 \details{
   Every call to the function runs the sampler and then produces the
