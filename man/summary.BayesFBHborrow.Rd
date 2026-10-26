@@ -68,7 +68,7 @@
     my_bfbhb <- BayesFBHborrow(Surv(tte, event) ~ X_trt + X_01 + X_02 + X_03,
                                data = DAT_cc, data_hist = DAT_hst,
                                model_choice = 'mix', iter = 10, warmup_iter = 5,
-                               refresh = 0, verbose = FALSE)
+                               verbose = FALSE)
 
     my_bfbhb.s <- summary(my_bfbhb)
     my_bfbhb.s

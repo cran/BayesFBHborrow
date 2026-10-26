@@ -23,14 +23,14 @@
 \renewcommand{\vec}[1]{\mathbf{#1}} % This changes the vector from an arrow to bold lower case
 
 %% simple replacements for JSS-style commands
-\newcommand{\code}[1]{\texttt{#1}}
-\newcommand{\pkg}[1]{\texttt{#1}}
-\newcommand{\proglang}[1]{\textsf{#1}}
-\newcommand{\file}[1]{\texttt{#1}}
-\newcommand{\email}[1]{\href{mailto:#1}{\texttt{#1}}}
-\newcommand{\CRANpkg}[1]{\texttt{#1}}
-\newcommand{\samp}[1]{\texttt{#1}}
-\newcommand{\kbd}[1]{\texttt{#1}}
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\pkg}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\proglang}[1]{\textsf{\detokenize{#1}}}
+\newcommand{\file}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\email}[1]{\href{mailto:#1}{\texttt{\detokenize{#1}}}}
+\newcommand{\CRANpkg}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\samp}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\kbd}[1]{\texttt{\detokenize{#1}}}
 \newcommand{\class}[1]{`\code{#1}'}
 \newcommand{\fct}[1]{\code{#1()}}
 \newcommand{\mrm}[1]{\mathrm{#1}}
@@ -51,7 +51,7 @@ Grant Izmirlian\,\orcidlink{0000-0002-0481-631X}$^{1,4}$
 \date{}
 
 \begin{document}
-
+%\VignetteIndexEntry{Bayesian borrowing from historical controls in a time to event study}
 \maketitle
 
 \begin{center}
@@ -61,65 +61,9 @@ $^{3}$ London School of Hygiene and Tropical Medicine \\
 $^{4}$ AstraZeneca R\&D, Gaithersburg
 \end{center}
 
-\begin{abstract}
-Statistical methods that leverage external trial information to help accelerate drug development are becoming
-increasingly popular. Bayesian methods facilitate dynamic borrowing, where the similarity of the response guides how much
-information is used. We have proposed a semiparametric Bayesian borrowing model for time-to-event data, with smoothing
-priors that allows the baseline hazard to take any form via an ensemble average \citep{Scott2024}. By accurately modelling
-the baseline hazard, rather than approximating its form via fixed piecewise intervals, power is improved and bias of the
-estimated treatment effect reduced when the borrowing assumption of parameter exchangeability holds. A ``lump-and-smear''
-borrowing prior makes the model robust to non-exchangeable historical data by increasing the sensitivity of borrowing to
-the presence of prior-data conflict, reducing the potential for type I error inflation.
 
-We present \textbf{BayesFBHborrow}, an \proglang{R} package that implements our semiparametric Bayesian borrowing model with a
-historical control. We demonstrate how to select the optimal borrowing hyperparameters. The model supports covariate-adjusted
-borrowing, which can reduce prior-data conflict and improve power when differences in outcomes are attributable to changes in
-the covariate distribution. As the treatment effect estimator is non-collapsible, the marginal hazard ratio can be estimated via
-Bayesian G-computation, while still permitting an adjusted analysis to account for control group drift. We illustrate the Bayesian
-flexible baseline hazard model on a simulated and real dataset with a marginal estimand, for both an unadjusted and adjusted analyses.
-\end{abstract}
-
-\noindent\textbf{Keywords:} Bayesian borrowing, flexible baseline hazard, time-to-event, covariate adjustment, G-computation.
-
-\newpage
-
-%% \VignetteIndexEntry{BayesFBHborrow}
-%% \VignetteEngine{utils::Sweave}
-%% \VignetteEncoding{UTF-8}
-
-%% -- Introduction -------------------------------------------------------------
-
-%% - In principle "as usual".
-%% - But should typically have some discussion of both _software_ and _methods_.
-%% - Use \proglang{}, \pkg{}, and \code{} markup throughout the manuscript.
-%% - If such markup is in (sub)section titles, a plain text version has to be
-%%   added as well.
-%% - All software mentioned should be properly \cite-d.
-%% - All abbreviations should be introduced.
-%% - Unless the expansions of abbreviations are proper names (like "Journal
-%%   of Statistical Software" above) they should be in sentence case (like
-%%   "generalized linear models" below).
-
+%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction} \label{sec:intro}
-
-%\begin{leftbar}
-%[FROM JSS REVIEWERS:]
-%The introduction is in principle ``as usual''. However, it should usually embed
-%both the implemented \emph{methods} and the \emph{software} into the respective
-%elevant literature. For the latter both competing and complementary software
-%should be discussed (within the same software environment and beyond), bringing
-%out relative (dis)advantages. All software mentioned should be properly
-%\verb|\cite{}|d. (See also Appendix~\ref{app:bibtex} for more details on
-%\textsc{Bib}{\TeX}.)
-%For writing about software JSS requires authors to use the markup
-%\verb|\proglang{}| (programming languages and large programmable systems),
-%\verb|\pkg{}| (software packages), \verb|\code{}| (functions, commands,
-%arguments, etc.). If there is such markup in (sub)section titles (as above), a
-%lain text version has to be provided in the {\LaTeX} command as well. Below we
-%also illustrate how abbrevations should be introduced and citation commands can
-%be employed. See the {\LaTeX} code for more details.
-%\end{leftbar}
-
 %1. Scene setting
 In early phase clinical trials, there has been a notable shift away from the traditional frequentist approach to Bayesian
 methods. These methods are particularly beneficial in clinical research, as they allow for the incorporation of existing knowledge
@@ -176,16 +120,10 @@ cluster the historical baseline hazards. This helps to discount the historical d
 these methods impose a constraint on the shape of the baseline hazard over time, either as a horizontal line, a step function, or
 a monotonic function.
 
-
 %5. What do we do?
 In the \pkg{BayesFBHborrow} package we use a joint semiparametric hierarchical model to borrow information from a historical
 time-to-event dataset with a smooth and flexible baseline hazard \citep{Scott2024}. We use an ensemble method, popular in
-tree-based approaches such as random forests, to obtain a flexible baseline hazard function.
-%\textcolor{red}{why not: This flexible baseline hazard is a consequence of having put priors on the number ofsplit points and
-% their locations, so that the MCMC/MH sampler results in a kind of ensemble of piecewise exponentials with average that is nearly
-% a smooth function.}  The ensemble approach was used in the published paper to convey to the reviewers what was happening. I
-% agree with you but we will keep it.
-To smooth the shape of the baseline
+tree-based approaches such as random forests, to obtain a flexible baseline hazard function. To smooth the shape of the baseline
 hazard function, we introduce a dependency across the time points between the log baseline hazards via a nearest-neighbour
 Gaussian Markov random field (NN-GMRF) prior \citep{Besag1995}, improving the accuracy of our estimation. ``Lump-and-smear" priors
 can control the borrowing, making the borrowing robust to both violations of the assumptions of exchangeability and prior-data
@@ -203,35 +141,6 @@ able to borrow information whilst remaining free to accurately capture the true 
 also allows the model to adjust covariates from either the current or historical trial (or both), which can help reduce posterior
 uncertainty within our model. Again, this is not applicable for the summary-level data models.
 
-
-%In conclusion, the development and application of Bayesian borrowing in clinical trials represent a significant advancement in
-%statistical methodology, reflecting a more nuanced and efficient approach to medical research. While tools like \pkg{RBesT} and
-%\pkg{psborrow2} have made substantial progress in facilitating this process, each comes with its own set of strengths and
-%limitations. With \pkg{BayesFBHborrow} we hope to negate some of these limitations while also offering a new methodology to
-%statistical research of time-to-event. Rather than assuming a parametric form for the hazard function we use a semiparametric
-%approach to obtain a smooth and flexible baseline hazard. We extend the PWE model, by adopting a Gaussian Markov random field
-%prior on the historical baseline hazards and treating the split intervals as random intervals. The dynamic borrowing is an
-%extension of \cite{hobbs} with a commensurate prior to manage the amount of borrowing. To ensure robustness against prior data
-%conflicts we implement a mixture of inverse gammas as the prior on the borrowing parameter. This mixture can be controlled by the
-%user and we show that by marginalising over the split points in the posterior estimation and incorporating a smoothing parameter
-%we are able to accurately estimate the baseline hazard. We also consider baseline characteristics, allowing for variations
-%between the historical and current datasets.
-
-%% -- Manuscript ---------------------------------------------------------------
-
-%% - In principle "as usual" again.
-%% - When using equations (e.g., {equation}, {eqnarray}, {align}, etc.
-%%   avoid empty lines before and after the equation (which would signal a new
-%%   paragraph.
-%% - When describing longer chunks of code that are _not_ meant for execution
-%%   (e.g., a function synopsis or list of arguments), the environment {Code}
-%%   is recommended. Alternatively, a plain {verbatim} can also be used.
-%%   (For executed code see the next section.)
-
-%%% Terms
-% Stratification factors or prognostic covariaes are all called covariates
-% We must seperate out the treatment covariate from the other covariates
-
 \section{Model specification} \label{sec:models}
 The \pkg{BayesFBHborrow} package performs Bayesian borrowing through an ensemble method popular in tree-based regressions, such as
 random forests, to borrow external control information. For each iteration, we partition time and model the baseline hazard with a
@@ -240,7 +149,7 @@ by changing the location of the split points or adding or removing split points 
 is a smoothed function obtained via an ensemble average. Because the baseline hazard function can be very flexible, we use our
 prior structure to smooth its shape. This Section will guide the user through the theoretical basis of the sampler for the
 Bayesian Flexible Baseline Hazard (BFBH) model. For a more detailed summary of the algorithm and the sampling methods, see
-\cite{Scott2024}.
+\cite{Scott2024}. 
 
 \subsection{Likelihood}\label{sec:like}
 In order to obtain a flexible baseline hazard we begin with a piecewise exponential likelihood for the current trial of the joint
@@ -248,8 +157,6 @@ model which consists of two elements, the hazard and the cumulative hazard
 function at the time of the event. For the current trial consisting of $i = 1, ..., n$ patients with the time-to-event outcome
 represented by $y_i$ and event indicator $\nu_i$. We divide the time axis into $J + 1$ partitions with split points $0 = s_0 < s_1
 < ... < s_{J+1}$, and assume a constant baseline hazard $h_j(y_i)$ per partition for $y_i \in I_j = (s_{j-1}, s_j)$.
-
-%Let $s_{J+1} = \mbox{max}(y_i|\nu_i = 1)$ to ensure that the estimation of the baseline hazard in the final interval is stable.
 
 The vector of stratification variables or prognostic covariates ($p \times 1$) is defined by $\mathbf{x}'_i = (x_{i1}, ...,
 	x_{ip})$ for subject $i$ with corresponding regression coefficients $\boldsymbol{\beta} = (\beta_1, ..., \beta_p)$ and treatment
@@ -278,20 +185,20 @@ distribution with hyperparameter $\phi$ and right truncation limit  $J_\text{max
 \begin{equation}\label{eq:phi}
 	J \sim \text{Poisson}_\text{t}(\phi) \qquad 0 \leq J \leq J_{\text{max}}.
 \end{equation}
-The truncation shrinks the mean number of split points and to a greater extent the variance below $\phi$, whilst controlling the
-flexibility of the baseline hazard and reducing the computational burden of the sampler. The distribution of the split point
-locations, is the even-numbered order statistic of $2J + 1$ uniformly distributed points \citep{green}.
+The truncation shrinks the mean number of split points and to a greater extent the variance below
+$\phi$, whilst controlling the flexibility of the baseline hazard 
+and reducing the computational burden of the sampler. The distribution of the split point locations, is the even-numbered order
+statistic of $2J + 1$ uniformly distributed points \citep{green}. Historical information is coupled with current data to infer the
+posterior distribution of these variables.   
 
 To smooth the posterior baseline hazard we introduce a dependency of the historical log baseline hazards on their nearest
 neighbour through a GMRF prior
 \begin{equation}
-	\log (\boldsymbol{\lambda}_0)|\mu, \sigma^2_\lambda \sim \mathcal{N}_{J+1}(\mu \boldsymbol{1},
-        \sigma_{\lambda}^2\Sigma_s(c_\lambda)),
-        \label{eq:gaussianmarkov}
+	\log (\boldsymbol{\lambda}_0)|\mu, \sigma^2_\lambda \sim \mathcal{N}_{J+1}(\mu \boldsymbol{1}, \sigma_{\lambda}^2\Sigma_s(c_\lambda)), \label{eq:gaussianmarkov}
 \end{equation}
-with means $\mu$ and the covariance matrix $\sigma_{\lambda}^2\Sigma_s(c_\lambda)$. The overall variability of the historical log
-baseline hazard is defined by $\sigma_{\lambda}^2$ and the smoothness is controlled by the hyperparameter $c_\lambda$ $\in (0,1)$
-within $\Sigma_s$ (denoted as a function of $c_\lambda$). Additionally, these parameters have the following hyperpriors
+with means $\mu$ and the covariance matrix $\sigma_{\lambda}^2\Sigma_s(c_\lambda)$. The overall variability of the historical log baseline
+hazard is defined by $\sigma_{\lambda}^2$ and the smoothness is controlled by the hyperparameter $c_\lambda$ $\in (0,1)$ within
+$\Sigma_s$ (denoted as a function of $c_\lambda$). Additionally, these parameters have the following hyperpriors
 \begin{align}
 	\sigma_\lambda^2 & \sim \text{Inv-Gamma}(a_\sigma, b_\sigma), \label{eq:sigma_lambda} \\
 	\pi(\mu)         & \propto 1. \label{eq:mu}
@@ -300,8 +207,7 @@ within $\Sigma_s$ (denoted as a function of $c_\lambda$). Additionally, these pa
 The priors for the treatment effect, regression coefficients corresponding to the baseline characteristics for the current and
 historical data are
 \begin{equation}\label{eq:betas}
-	\varphi \sim \mathcal{N}(0,\sigma_\beta^2), \qquad  \boldsymbol{\beta} \sim \mathcal{N}(0,\sigma_\beta^2) , \qquad
-        \boldsymbol{\beta}_0 \sim \mathcal{N}(0,\sigma_{\beta_0}^2).
+	\varphi \sim \mathcal{N}(0,\sigma_\beta^2), \qquad  \boldsymbol{\beta} \sim \mathcal{N}(0,\sigma_\beta^2) , \qquad \boldsymbol{\beta}_0 \sim \mathcal{N}(0,\sigma_{\beta_0}^2).
 \end{equation}
 with $\sigma_{\beta}^2$ and $\sigma_{\beta_0}^2$ sufficiently large for a vague priors.
 
@@ -315,29 +221,22 @@ baseline hazard \citep{hobbs}
 where $\tau_j$ is a commensurability (variance) parameter.
 
 \subsection{Borrowing method}
-It is the prior on $\tau_j$ that controls the borrowing, and this has two different prior parameterisation options, either the
-borrowing is determined per split point or across all the split points (where $\tau_j = \tau)$. Both of these approaches are
-modelled by a mixture of inverse gamma distributions and mixture weight $p_0$.
+The prior on $\tau_j$ that controls the baseline hazard borrowing and has two different prior parameterisation options, either
+borrowing is determined per split point or across all split points (where $\tau_j = \tau)$. We focus on the borrowing per split,
+which is modelled by a mixture of inverse gamma distributions and mixture weight $p_0$.
 \begin{align}
-	\tau_j^{(\text{mix})} & \sim p_0 \text{Inv-Gamma}(a_\tau, b_\tau) + (1-p_0)\text{Inv-Gamma}(c_\tau, d_\tau), \label{eq:mix}  \\
-	\tau^{(\text{all})}   & \sim p_0 \text{Inv-Gamma}(a_\tau, b_\tau) + (1-p_0)\text{Inv-Gamma}(c_\tau, d_\tau).  \label{eq:all}
+	\tau_j^{(\text{mix})} & \sim p_0 \text{Inv-Gamma}(a_\tau, b_\tau) + (1-p_0)\text{Inv-Gamma}(c_\tau, d_\tau). \label{eq:mix}
 \end{align}
-
-There is also the option of a simple prior (which is nested in prior (\ref{eq:mix})) with $p_0 = 1$
-\begin{equation}\label{eq:uni}
-	\tau_j^{(\text{uni})} \sim \text{Inv-Gamma}(a_\tau, b_\tau).
-\end{equation}
-The inverse gamma prior of (\ref{eq:uni}) imposes a simple assumption of exchangeability between the baseline hazards for the
-interval $I_j$. The lump-and-smear priors (\ref{eq:mix}-\ref{eq:all}) allow for the possibility of large differences between the
-log baseline hazard of the historical and current data, which robustifies the prior against prior-data conflict.
+The lump-and-smear prior allows for the possibility of large differences between the log baseline hazard of the historical and
+current data, robustifing the prior against prior-data conflict.
 
 
 \subsection{Choice of hyperparameters} \label{sec:hyper_choice}
 As the selection of the hyperparameters which control the borrowing are scale dependent, by default the package will standardise
-time in the current data so that there is an average of one event per unit of time. This standardisation constant will also be
-applied to the historical data simplifying the model specification, so that the principled approach to hyperparameter selection
-for dynamic borrowing outlined in \cite{Scott2024} can be followed. The MCMC posterior samples and associated plots from the
-package are returned in the original unit of time.
+time in the current data so that there is an average of one event per unit of time. This standardisation constant will
+also be applied to the historical data simplifying the model specification, so that the principled approach to hyperparameter
+selection for dynamic borrowing outlined in \cite{Scott2024} can be followed. The MCMC posterior samples and associated plots from
+the package are returned in the original unit of time.
 
 \subsubsection{Smoothing parameters}
 When choosing the smoothing parameters of $\phi$, $J_\text{max}$ and $c_\lambda$, our aim is to exploit the trade-off between
@@ -353,12 +252,12 @@ control group data.
 
 \subsubsection{Borrowing parameters}
 \cite{Scott2024} explore the impact of these hyperparameters on dynamic borrowing, through borrowing profiles which define how
-quickly historical information is discounted for discrepancies between the log-baseline hazard. They demonstrate that specific
-choices of the mixture prior hyperparameters induce favourable borrowing characteristics, close to full borrowing for tolerated
-differences between the log baseline hazard, whilst information is fully discounted when prior-data conflict is detected by the
-model.  A simple approach to selecting appropriate values is proposed that is agnostic to the units of time the events are
-measured in and enables the user to specify their tolerance for differences between the log-baseline hazard. The approach for the
-mix prior parameterisation is;
+quickly historical information is discounted for discrepancies between the log-baseline hazard. They demonstrate that specific choices of
+the mixture prior hyperparameters induce favourable borrowing characteristics, close to full borrowing for tolerated differences
+between the log baseline hazard, whilst information is fully discounted when prior-data conflict is detected by the model.  A
+simple approach to selecting appropriate values is proposed that is agnostic to the units of time the events are measured in and
+enables the user to specify their tolerance for differences between the log-baseline hazard. The approach for the mix prior
+parameterisation is;
 \begin{itemize}
 	\item Standardise the current and historical baseline hazard so that there is an average of one event per unit of time
 	      in the current data  (performed by the package). This means that the control hazard is approximately 1.
@@ -379,57 +278,13 @@ hazards for the choice of hyperparameters
 		(\log(\lambda_j)-\log(\lambda_{0j}))^2 + 2  d_\tau } \right)^{-\frac{3}{2}}\right)^{-1}.
 \end{equation}
 Alternatively, a prior weight can be defined first, the limit of tolerable difference between the log baseline hazards calculated
-in (\ref{eq:bb_profile}) and the borrowing profile plotted.
-
-If $\tau^{(\text{all})}$ (\ref{eq:all}) is used in the model, then the limit of tolerable difference $\xi$ in
-(\ref{eq:tip_p}) will be replaced by the limit of the sum of squared error. This will be harder to define, so the user may wish to
-plot various borrowing profiles for different choices of $p_0$ to decide on a suitable value.
-
-If the simple univariate inverse gamma prior (\ref{eq:uni}) is selected, then $b_\tau$ should be set to a small value (typically
-0.001) to encourage borrowing. However, this prior imposes a simpler assumption of exchangeability between the baseline hazards for
-the interval $I_j$, and the lump-and-smear mixture priors, which robustifies the model against prior-data conflict, are
-preferable. 
+in (\ref{eq:bb-profile}) and the borrowing profile plotted.
 
 \subsection{Design matrix for an adjusted analysis}\label{sec:DM}
 If covariates are to be included in the model through $\mathbf{X}_0$ and $\mathbf{X}$ for an adjusted analysis, care must be taken
 to ensure that all historical information is utilised and the current and historical baseline hazard remain concordant. However,
-any type of design matrix can be used, such as reference-based or sum-to-zero, as the baseline hazard is common to all subjects,
-the parameterisation for the concordant design matrices does not impact the borrowing.
-
-%Using a
-%traditional design matrix approach for the discrete covariates, where a parameter is an offset from the reference group, reduces
-%the borrowed information to a subset of the control group. Whereas the treatment variable can be coded with respect to the
-% reference group, in order to borrow from the complete historical information, all other discrete covariates must be coded to imply
-% a sum to zero constraint on the regression parameters. For a three-level discrete covariate, we require two columns and three
-% unique rows to define levels in the design matrix, as is seen in Table \ref{tab:levels}.
-% \begin{table}[ht!]
-% 	\begin{center}
-% 		\begin{tabular}{ |c|c c| }
-% 			\hline
-% 			level 1 &   1    &   0   \\
-% 			\hline
-% 			level 2 &   0    &   1   \\
-% 			\hline
-% 			level 3 & $-a_1$ & $-a_2$ \\
-% 			\hline
-% 		\end{tabular}
-% 		\caption{Unique levels of the design matrix for a discrete three level covariate. Each row defines a level of the
-%                        covariate.}
-% 		\label{tab:levels} 
-% 	\end{center}
-% \end{table}
-% Here, $a_1 = |\{X=1\}| \div |\{X=3\}|$ and $a_2 = |\{X=2\}| \div |\{X=3\}|$, with totals over both historical and current
-% datasets. All continuous covariates must be centred (but we recommend standardising).
-
-% The construction of the design matrix for incorporating covariates in an adjusted analysis is demonstrated in Section
-% \ref{sec:PF}. Although there are benefits from an adjusted analysis, this step is complicated by the combination of the link
-% function in our model and conditioning on survival, which leads to non-collapsibility (\cite{Daniel2021}). The presence of this
-% phenomenon also means that, unlike a collapsible effect measure, an adjusted analysis of the current data for a marginal
-% estimate cannot be paired with an unadjusted model for the historical data. An adjusted analysis must be performed for both
-% historical and current data, with the same covariates and design matrix coding. Adjusting for covariates will change both the
-% interpretation of the treatment parameter and the borrowing exchangeability assumptions in (\ref{eq:lambda_clam}). We briefly
-% explore why this is the case and how a marginal estimand can be targeted whilst adjusting for covariates in Section \ref{sec:est
-% and adj}.
+any type of design matrix can be used, such as reference-based or sum-to-zero, as the baseline hazard is common to all subjects
+the parameterisation for the concordant design matrices does not impact the borrowing. 
 
 \subsection{MCMC sampler and posterior inference}
 To sample from the posterior distribution, we use a Metropolis-Hastings \citep{MH} within Gibbs \citep{gibbs} sampler. The sampler
@@ -439,8 +294,8 @@ and outline the arguments that control the output for the posterior inference.
 
 For fixed $J$ the unknown parameters in the joint model are
 \begin{equation}
-  \boldsymbol{\theta}(J) =(\varphi, \boldsymbol{\beta}, \boldsymbol{\lambda}, \boldsymbol{\beta}_0,  \boldsymbol{\lambda}_0,
-  \boldsymbol{s}, \boldsymbol{\tau}, \sigma^2_\lambda, \mu),
+	\boldsymbol{\theta}(J) =(\varphi, \boldsymbol{\beta}, \boldsymbol{\lambda}, \boldsymbol{\beta}_0,  \boldsymbol{\lambda}_0, \boldsymbol{s}, \boldsymbol{\tau},
+	\sigma^2_\lambda, \mu),
 \end{equation}
 the components of $\boldsymbol{\theta}(J)$ are updated by either exploiting conjugacies in the full conditionals or via
 Metropolis-Hastings steps.
@@ -450,8 +305,8 @@ coefficients posterior are sampled with a Metropolis-Hastings step. As the gradi
 are available in closed form, we employ a Newton-Raphson, locally Gaussian proposal for both the historical and current regression
 coefficients. At each iteration, we form a multivariate, curvature-adjusted normal approximation around the current parameter
 value and propose from this distribution, using a single scalar step-size to scale the stochastic component for each coefficient
-vector, $(\varphi, \boldsymbol{\beta})$, and $\boldsymbol{\beta}_0$. These tuning parameters, \code{cprop\_beta} and
-\code{cprop\_beta\_0} respectively, need to be varied in shorter runs so that the probability of accepting each multivariate
+vector, $(\varphi, \boldsymbol{\beta})$, and $\boldsymbol{\beta}_0$. These tuning parameters, \code{cprop_beta} and
+\code{cprop_beta_0} respectively, need to be varied in shorter runs so that the probability of accepting each multivariate
 proposal is approximately $40\%$, so that the posterior distribution is explored fully.
 
 For the historical baseline hazard we use a Metropolis-Hastings where the proposal is from a conjugate posterior, after an
@@ -486,18 +341,10 @@ where $\lambda_j(\nu)$ is the interval containing $t$ in the MCMC iteration $\nu
 iterations. The smoothness of these parameters is controlled by $\phi$, $J_\text{max}$ (\ref{eq:phi}) and $c_\lambda$
 (\ref{eq:lambda_clam}).
 
-%% I think (16) is correct for the posterior predictive hazard function. We place a prior on the parameters in our likelihood and
-%% compute the posterior. This is the posterior of the rate parameter, which has the interpreation that it is the hazard.  Take
-%% the median rather than the expectation.  For the adjusted analysis with we can push out the hazard for the reference group,
-%% with or without the treatment.
-
-%% If we marginalise we can not be on the hazard scale because it is not a probability denisty %%  2026-04-29 gi: Yes!
-
 The package also provides plots of the smoothed expected posterior predictive hazard function
 \begin{equation}
 	\label{eq:smooth_pred_bh}
-	\lambda(t|\vec{x}_i)_i = \frac{1}{n_{\text{iter}}}\sum^{n_{\text{iter}}}_{\nu=1} \lambda_{j}(\nu)\exp
-        \left\{\mathbf{x}'_i\boldsymbol{\beta}(\nu) + z_i\varphi(\nu) \right\},
+	\lambda(t|\vec{x}_i)_i = \frac{1}{n_{\text{iter}}}\sum^{n_{\text{iter}}}_{\nu=1} \lambda_{j}(\nu)\exp \left\{\mathbf{x}'_i\boldsymbol{\beta}(\nu) + z_i\varphi(\nu) \right\},
 \end{equation}
 and expected posterior predictive survival function
 \begin{equation}
@@ -509,77 +356,6 @@ and expected posterior predictive survival function
 where $\boldsymbol{\beta}(\nu)$ and $\varphi(\nu)$ are the posterior samples of the regression coefficients and the treatment
 coefficient for an individual with a covariate set $\mathbf{x}_i$ in the treatment group $z_i$. These are plotted along with the
 associated credible intervals.
-%\begin{leftbar}
-%Note that around the \verb|{equation}| above there should be no spaces (avoided
-%in the {\LaTeX} code by \verb|%| lines) so that ``normal'' spacing is used and
-%not a new paragraph started.
-%\end{leftbar}
-
-%\begin{Code}
-%glm(formula, data, subset, na.action, weights, offset,
-%  family = gaussian, start = NULL, control = glm.control(...),
-%  model = TRUE, y = TRUE, x = FALSE, ...)
-%\end{Code}
-
-%\begin{leftbar}
-%As the synopsis above is a code listing that is not meant to be executed,
-%one can use either the dedicated \verb|{Code}| environment or a simple
-%\verb|{verbatim}| environment for this. Again, spaces before and after should be
-%avoided.
-
-%Finally, there might be a reference to a \verb|{table}| such as
-%Table~\ref{tab:overview}. Usually, these are placed at the top of the page
-%(\verb|[t!]|), centered (\verb|\centering|), with a caption below the table,
-%column headers and captions in sentence style, and if possible avoiding vertical
-%lines.
-%\end{leftbar}
-
-%\begin{table}[t!]
-%\centering
-%\begin{tabular}{lllp{7.4cm}}
-%\hline
-%%Type           & Distribution & Method   & Description \\ \hline
-%GLM            & Poisson      & ML       & Poisson regression: classical GLM,
-%                                           estimated by maximum likelihood (ML) \\
-%               &              & Quasi    & ``Quasi-Poisson regression'':
-%                                           same mean function, estimated by
-%                                           quasi-ML (QML) or equivalently
-%                                           generalized estimating equations (GEE),
-%                                           inference adjustment via estimated
-%                                           dispersion parameter \\
-%               &              & Adjusted & ``Adjusted Poisson regression'':
-%                                           same mean function, estimated by
-%                                           QML/GEE, inference adjustment via
-%                                           sandwich covariances\\
-%               & NB           & ML       & NB regression: extended GLM,
-%                                           estimated by ML including additional
-%                                           shape parameter \\ \hline
-%Zero-augmented & Poisson      & ML       & Zero-inflated Poisson (ZIP),
-%                                           hurdle Poisson \\
-%               & NB           & ML       & Zero-inflated NB (ZINB),
-%                                           hurdle NB \\ \hline
-%\end{tabular}
-%\caption{\label{tab:overview} Overview of various count regression models. The
-%table is usually placed at the top of the page (\texttt{[t!]}), centered
-%(\texttt{centering}), has a caption below the table, column headers and captions
-%are in sentence style, and if possible vertical lines should be avoided.}
-%\end{table}
-
-
-%% -- Illustrations ------------------------------------------------------------
-
-%% - Virtually all JSS manuscripts list source code along with the generated
-%%   output. The style files provide dedicated environments for this.
-%% - In R, the environments {Sinput} and {Soutput} - as produced by Sweave() or
-%%   or knitr using the render_sweave() hook - are used (without the need to
-%%   load Sweave.sty).
-%% - Equivalently, {CodeInput} and {CodeOutput} can be used.
-%% - The code input should use "the usual" command prompt in the respective
-%%   software system.
-%% - For R code, the prompt "R> " should be used with "+  " as the
-%%   continuation prompt.
-%% - Comments within the code chunks should be avoided - these should be made
-%%   within the regular LaTeX text.
 
 \section{Estimand and adjusted models}\label{sec:est and adj}
 In Section~\ref{sec:PF}, we demonstrate how to use the package under different population-level summaries, a key element of the
@@ -598,7 +374,7 @@ with our time-to-event data, before illustrating the application of our model.
 \subsection{Covariate adjustment}
 %% Why adjust in the context of borrowing Account for differences in the meausred confounders
 In many of the Bayesian dynamic methods that borrow control information, the focus is on borrowing with a marginal sufficient
-statistic. However, the control outcome is likely to be affected by variables, for example, in the oncology setting the tumour
+statistic. However, the control outcome is likely to be affected by variables, for example, in the oncoloy setting the tumour
 stage is predictive of survival. If the distribution of these key prognostic covariates varies across the current and control
 trial, either due to differences in the study's target population or ``drift'' as the standard of care improves over time or chance,
 then the possibility of prior-data conflict increases. By including prognostic covariates in an adjusted model, we can account for
@@ -607,22 +383,10 @@ this ``imbalance'', reducing the risk of prior-data conflict.
 %% Changes to the borrowing assumption
 When we adjust for covariates in our model through ($\mathbf{X}, \mathbf{X}_0$), the assumption of exchangeability of the current
 and historical log baseline hazard in (\ref{eq:lambda_clam}) is now conditional on the covariates. For borrowing to be meaningful,
-the true log-hazard function of the covariates must be the same in both the historical and control datasets. 
-%Either this is explicit, which is the case with our approach, or it is implicit, for example when using the probability of being
-%allocated to the current control to rebalance the distribution of covariates, before borrowing on the estimated (rebalanced)
-%marginal expectation using an approach such as robust meta-analytic predictive prior \citep{Chen2023}.
-We recommend examining the current and historical covariate effect posterior summaries to assess how reasonable this assumption is
-in your application. The assumption that both datasets are from the same source population; under similar measurement, inclusion
-criteria, clinical practice, and follow-up processes is even more important \citep{pocock} when working with an adjusted model.
-
-% %% Assumption underlying
-% We stress that incorporating covariate adjustment in a Bayesian borrowing model to account for a potential imbalance in the
-% covariate distribution of the current and historic trial control patient data, relies on the same underlying model between the
-% response and the covariates in each trial. Either this is explicit, which is the case with our approach or it is implicit, for
-% example when using inverse propensity score weighting (where the propensity score is the probability of being allocated to the
-% current control) to rebalance the distribution of covariates, before borrowing on the estimated (rebalanced) marginal expectation
-% using an approach such as robust meta-analytic predictive prior \citep{Chen2023}.
-
+the true log-hazard function of the covariates must be the same in both the historical and control datasets.  We recommend
+examining the current and historical covariate effect posterior summaries to assess how reasonable this assumption is in your
+application. The assumption that both datasets are from the same source population; under similar measurement, inclusion criteria,
+clinical practice, and follow-up processes is even more important \citep{pocock} when working with an adjusted model.
 
 %% Non-collapsiblity and unmeasured fraility
 Unfortunately, the log link function in our joint hazard ratio model leads to a non-collapsible treatment estimand, if the
@@ -646,7 +410,7 @@ argument of the function, time $t$) directly. The marginalised survival function
 probability in terms of the cumulative hazard function is
 \begin{align}
 	\label{eq:marg_surv}
-	S(t|Z=z, \boldsymbol{\theta}) & =\mathbb{E}[S(t|Z=z,\vec{X},\boldsymbol{\theta})] \nonumber \\
+	S(t|Z=z, \boldsymbol{\theta}) & =\mathbb{E}[S(t|Z=z,\vec{X},\boldsymbol{\theta})] \nonumber                                       \\
 	                              & = \int_{\vec{X}} \exp(-H_0(t))^{\exp (\vec{x}'\boldsymbol{\beta} + z\varphi )}p(\vec{X})d\vec{X},
 \end{align}
 where the expectation is over the covariate distribution and $H_0(t)$ is the cumulative baseline hazard function given the
@@ -655,7 +419,7 @@ baseline hazards $\lambda$, and time partition parameters $\vec{s}$ and $J$,
 	\label{eq:cum_hazard}
 	H_0(t|\boldsymbol{\theta}) =
 	\prod_{j=1}^{J+1} \delta_{ij}\big( \lambda_j(t - s_{j-1}) \\
-	+ \sum_{g=1}^{j-1}\lambda_g(s_g-s_{g-1})\big)
+	+ \sum_{g=1}^{j-1}\lambda_g(s_g-s_{g-1})\big),
 \end{equation*}
 with $\delta_{ij} =1$ when $t$ is in the $j$th interval and 0 otherwise.
 
@@ -666,7 +430,7 @@ the pattern weights
 \begin{align*}
 	\boldsymbol{\pi} \sim                & \text{Dirichlet}(\alpha_1,...,\alpha_K),            \\
 	k_i \sim                             & \text{categorical}(\boldsymbol{\pi}),               \\
-	\boldsymbol{\pi}|\boldsymbol{k} \sim & \text{Dirichlet}(\alpha_1 + k_1,...,\alpha_K + k_K)
+	\boldsymbol{\pi}|\boldsymbol{k} \sim & \text{Dirichlet}(\alpha_1 + k_1,...,\alpha_K + k_K),
 \end{align*}
 where $k = (k_1, ..., k_K)$ are the counts of observations in each unique covariate pattern. As is standard practise
 \cite{Rubin1981}, we set $\alpha_i=0$ for all $i=1,...,K$. The conjugate posterior weights $\boldsymbol{\pi}|\boldsymbol{k}$
@@ -703,20 +467,16 @@ marginal estimand is often targeted, and a simplifying assumption of time-consta
 ratio) is made, despite the likely presence of frailty. In this case, our covariate-adjusted estimator from the g-computation
 procedure will have a very similar expectation to the unadjusted estimator but with increased precision.
 
-%Frailty effects our model where the marginal posterior will no longer be constant over time, despite being constant over each
-%time partion
+%Frailty effects our model where the marginal posterior will no longer be constant over time, despite being constant over each time partion
 Under a non-null treatment effect, the effect of time varying risk sets in time-to-event data due to unmeasured frailty will
 affect the marginal posterior hazard ratio of our model, even without additional prognostic covariate adjustment. This is because
 we obtain a time-varying hazard, by assuming a constant hazard (and constant hazard ratio) for each time partition, and then
 average over unmeasured frailty and time partitions rather than conditioning on them. The balance of the treated and control group
 will change dynamically as higher-risk or ``sicker'' patients fail earlier, leading to a slight attenuation toward the null of the
 marginal hazard ratio, which is no longer constant over time.
-%% 2026-04-29 gi:  frailty is best used when there are repeated measures so there's something to cluster -- e.g. one needs
-%%                 repeated observations of something to estimate its distribution -- otherwise estimates of
-%%                 the parameters of the frailty distribution will be very noisy slowing down convergence of samples from the
-%%                 joint posterior.
 
 <<label=production, eval=TRUE, echo=FALSE, results=hide>>=
+######################################################################################################################
 ## Here we specify whether this is a production run or validation run. Production runs use 6000 sampler iterations and
 ## 2000 warm-up iterations, whereas validation runs use 100 and 50, respectively. A production run takes about an hour
 ## and saves the results whereas a validation run checks for previously saved results to load and is very quick.
@@ -736,7 +496,7 @@ marginal hazard ratio, which is no longer constant over time.
 ##                everywhere in the paper, and saves the results
 ##
 run_type <- "load saved"
-################################################################################################
+######################################################################################################################
 
 
 test <- run_type == "test"
@@ -756,13 +516,6 @@ if(production) {
 
 \section{Package Functionality through Examples}
 \label{sec:PF}
-The most recent version of the package contains vastly improved core functionality, usability, and computational efficiency. We
-added `print()`, `summary()`, `plot()`, and `update()` methods. To extend the covariate-adjustment capabilities of the
-methodology, we also added functionality for estimating the marginal treatment effect using **g-computation**. Finally, we
-implemented parallelization using the modern approach offered by R packages \code{parallelly, future} and \code{future.apply},
-substantially reducing the time required to complete an analysis. The main function \code{BayesFBHborrow} will run in parallel
-mode on unix-alike PC's (mac, WSL) as well as on a high performance computing cluster. 
-
 The design philosophy is based upon the premise that this tool is intended for the analysis of survival data. The package provides
 methods for summarising fitted models, extracting conditional coefficient and treatment-effect summaries, extracting marginal
 treatment effects obtained by G-computation, and generating diagnostic plots. The \code{summary} method returns a
@@ -770,6 +523,12 @@ treatment effects obtained by G-computation, and generating diagnostic plots. Th
 treatment-effect summaries are extracted with \code{coef}. Marginal treatment-effect summaries are extracted separately with
 \code{MTE}. This distinction reflects the fact that a marginal treatment effect obtained by G-computation is not a regression
 coefficient from the fitted conditional model.
+
+Post-warm-up sampling runs in parallel. This has been tested in the R console on Windows, macOS, Linux PCs, Windows Subsystem
+for Linux (WSL), and a high-performance computing cluster (HPC), as well as in RStudio on all of these platforms. Using the
+command line on an HPC system requires a specially configured interactive node (see documentation).  At the command line,
+Linux-like systems use multicore processing, whereas R in Windows and RStudio on any operating system use multisession processing, 
+which is less efficient.
 
 In this Section we explain the essentials of the package functionality, including the calling sequence, the meaning of important
 arguments, and the connection between the methodology presented in the previous sections and the available analysis options. The
@@ -798,27 +557,27 @@ library(patchwork)
 \subsection{Examples using simulated data}
 The simulated current trial and historical control dataset are obtained via the included data generation function
 \fct{genBFBHBdat}. We begin by specifying the sample sizes and true values of the parameters, where the variable names are
-assigned to their corresponding argument names. First, \code{n\_cc\_1} and \code{n\_cc\_0} are the sizes of the current trial treated
-and control arms, and \code{n\_hst} is the size of the historical controls data set. 
+assigned to their corresponding argument names. First, \code{n_cc_1} and \code{n_cc_0} are the sizes of the current trial treated
+and control arms, and \code{n_hst} is the size of the historical controls data set. 
 <<label=define-params-1, eval=TRUE, echo=TRUE, results=hide>>=
 n_cc_1 <- 300
 n_cc_0 <- 100
 n_hst <- 200
 @
 The data generating mechanism is a proportional hazards Weibull model. The true values of the shape parameter and the effect of
-treatment in the current trial are \code{shape} and \code{B\_trt}.
+treatment in the current trial are \code{shape} and \code{B_trt}.
 <<label=define-params-2, eval=TRUE, echo=TRUE, results=hide>>=
 shape <- 2
 B_trt <- log(0.55)
 @
 In this example, we will have 3 pretreatment covariates consisting of two continuous variables and a factor variable. This is
-specified via the coefficient vector arguments, \code{B\_x\_cc}, \code{B\_x\_hst}, and the argument \code{X\_fact\_levs} in the
-following way. The argument \code{X\_fact\_levs} gives the number (its length) and levels (its components) of factor variables, so
-for one factor variable of three levels, we set \code{X\_fact\_levs=3}. This will require two non-referent effects in both of the
+specified via the coefficient vector arguments, \code{B_x_cc}, \code{B_x_hst}, and the argument \code{X_fact_levs} in the
+following way. The argument \code{X_fact_levs} gives the number (its length) and levels (its components) of factor variables, so
+for one factor variable of three levels, we set \code{X_fact_levs=3}. This will require two non-referent effects in both of the
 coefficient vectors. Continuous covariates are specified by filling the coefficient vectors out further on the front end.  Notice
 below that the coefficient vectors are of length 4 corresponding to a single factor variable with two non-referent levels and two
 continuous covariates. Here we use equal pretreatment coefficient vectors for the current trial and historical trial, but this
-need not be the case in general. Lastly, we specify the intercepts, \code{int\_cc} and \code{int\_hst}, in the current trial and
+need not be the case in general. Lastly, we specify the intercepts, \code{int_cc} and \code{int_hst}, in the current trial and
 historical controls linear predictors. They are also taken here to be equal, but this need not be the case in general.
 
 <<label=define-params-3, eval=TRUE, echo=TRUE, results=hide>>=
@@ -834,8 +593,8 @@ for (o in par.objs) params[[o]] <- get(o)
 @
 
 We call our data generation function, which returns an object of class \code{BFBHBdat} with associated print method which will
-print \code{head()} of the current trial and historical controls datasets, which are in turn, elements named \code{DAT\_cc}
-and \code{DAT\_hst}.
+print \code{head()} of the current trial and historical controls datasets, which are in turn, elements named \code{DAT_cc}
+and \code{DAT_hst}.
 <<label=genBFBHBdat, eval=TRUE, echo=TRUE, results=hide>>=
 dat_lst <- 
     genBFBHBdat(n_cc_1=n_cc_1, n_cc_0=n_cc_0, n_hst=n_hst,
@@ -853,9 +612,9 @@ DAT_hst <- dat_lst$DAT_hst
 We outline two approaches to model hyperparameter selection. In our first set of examples based upon simulated data, rather than
 following Section \ref{sec:hyper_choice} in full to select our borrowing hyperparameters, we outline an abbreviated approach
 according to an effective sample size (ESS). The borrowing is controlled by the hyperparameters in the $\tau_j$ hyperprior. To
-robustify the model, a lump-and-smear mixture of inverse gamma distributions (\ref{eq:mix}) is selected via \code{model\_choice =
-  "mix"}. We fix \code{a\_tau} = \code{c\_tau} = 1, define the lump to encourage borrowing with \code{b\_tau} = 0.001 and choose the
-vague smear component with \code{d\_tau} = 5 as in the principled approach outlined in Section \ref{sec:hyper_choice}. Our choice
+robustify the model, a lump-and-smear mixture of inverse gamma distributions (\ref{eq:mix}) is selected via \code{model_choice =
+  "mix"}. We fix \code{a_tau} = \code{c_tau} = 1, define the lump to encourage borrowing with \code{b_tau} = 0.001 and choose the
+vague smear component with \code{d_tau} = 5 as in the principled approach outlined in Section \ref{sec:hyper_choice}. Our choice
 of borrowing hyperparameters ensures a sufficiently diffuse density for the vague component for the standardised data, so that a
 sample of the commensurate parameter is likely to fully discount the external information. Our prior weight of $p_0 = 0.8$ can
 therefore be interpreted to have an approximate effective sample size of $80\%$ of the historical sample size. Solving
@@ -873,9 +632,9 @@ who demonstrate the importance of restricting the split points to prevent the mo
 hazard to the data, with \code{phi}=3 and \code{Jmax}=5. This constrains the flexibility of the smoothed posterior baseline
 hazard, the wider time intervals within the PEM ensure that there is more data to estimate the baseline hazard at later
 time-to-events, where there are fewer events, reducing the overall variability of the baseline hazard estimate. As we know the
-underlying baseline hazard is monotonic, we choose a \code{clam\_smooth} of 0.8.  The default setting of a vague prior choice of
-(1,1) for \code{a\_sigma} and \code{b\_sigma} (\ref{eq:sigma_lambda}) controls the overall variability of the historical
-baseline. Finally, the variance of the vague prior on the treatment parameter is set by \code{beta\_prior}=$10^2$.
+underlying baseline hazard is monotonic, we choose a \code{clam_smooth} of 0.8.  The default setting of a vague prior choice of
+(1,1) for \code{a_sigma} and \code{b_sigma} (\ref{eq:sigma_lambda}) controls the overall variability of the historical
+baseline. Finally, the variance of the vague prior on the treatment parameter is set by \code{beta_prior}=$10^2$.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Rerun at Jmax - 5 and phi - 3
@@ -903,10 +662,10 @@ prior (\ref{eq:gaussianmarkov}). The commensurate parameters, $\tau_j$ are sampl
 
 \subsubsection{MCMC sampling options}
 %Sampling Parameters
-The \code{tuning\_parameters} control the performance of the MCMC sampler, and in particular the variance of the proposal
-distributions. The parameter that scales the Metropolis Hastings proposal for the regression coefficients \code{cprop\_beta}, is
+The \code{tuning_parameters} control the performance of the MCMC sampler, and in particular the variance of the proposal
+distributions. The parameter that scales the Metropolis Hastings proposal for the regression coefficients \code{cprop_beta}, is
 tuned to achieve an acceptance ratio in the region of $30\% \sim 40\%$. The baseline hazard parameters for the proposal prior
-\code{a\_lambda} and \code{b\_lambda} are set to 0.01 and \code{alpha} = 0.3. The probability of a birth move is set to the default
+\code{a_lambda} and \code{b_lambda} are set to 0.01 and \code{alpha} = 0.3. The probability of a birth move is set to the default
 value of 0.5.
 <<label=tuningparam, eval=TRUE, echo=TRUE, results=hide>>=
 tuning_parameters_sim <-
@@ -929,8 +688,8 @@ the one shown below. The first argument, \code{formula}, names the time to event
 \code{event}, wrapped in the \code{Surv} function as is typically done in survival models in \proglang{R}. On the right hand side
 we specify either an intercept only model, \code{~1}, or any pre-treatment variables related to randomisation. These can be
 continuous or factor variables, or character intended for coercion to factor. In this case, the reference level can be set in the
-usual way using an internal function \proglang{R} such as \code{relevel}. We specify the historical data, \code{DAT\_hst} for the
-\code{data} argument, and set the \code{CntlOnly} to \code{TRUE}.  The model \code{hyperparameters} and \code{tuning\_parameters},
+usual way using an internal function \proglang{R} such as \code{relevel}. We specify the historical data, \code{DAT_hst} for the
+\code{data} argument, and set the \code{CntlOnly} to \code{TRUE}.  The model \code{hyperparameters} and \code{tuning_parameters},
 are set as discussed above. We select 6000 iterations for the sampler after 2000 warmup iterations.
 
 <<label=fit_hst_cndl, eval=TRUE, echo=TRUE, results=hide>>=
@@ -940,14 +699,14 @@ fit_sim_hst_cndl <-
                    hyperparameters = hyperparameters_sim,
            tuning_parameters = tuning_parameters_sim,
            warmup_iter = warmup_iter, iter = iter,
-           refresh = warmup_iter, verbose = TRUE)
+           verbose = TRUE)
 @
 
-A plot of the baseline hazard can be used to judge the adequacy of the choice of the smoothing parameters, (\code{J\_max},
-\code{phi}, \code{c\_lambda}). Use of the plot method for the class is described below.
+A plot of the baseline hazard can be used to judge the adequacy of the choice of the smoothing parameters, (\code{Jmax},
+\code{phi}, \code{c_lambda}). Use of the plot method for the class is described below.
 
 The model can also be fitted to the current trial alone using a call similar to the above, but with the following changes. The
-\code{data} argument is set to the current trial dataset, \code{DAT\_cc}, and the treatment indicator variable is listed first
+\code{data} argument is set to the current trial dataset, \code{DAT_cc}, and the treatment indicator variable is listed first
 among the regressors on the right side of the formula argument.  There is no need to set the \code{CntlOnly} argument to
 \code{FALSE}, as this is its default value.
 <<label=fit_sim_nb-no-borrow, eval=TRUE, echo=TRUE, results=hide>>=
@@ -957,18 +716,18 @@ fit_sim_nb_cndl <-
                    hyperparameters = hyperparameters_sim,
            tuning_parameters = tuning_parameters_sim,
            warmup_iter = warmup_iter, iter = iter,
-           refresh = warmup_iter, verbose = TRUE)
+           verbose = TRUE)
 @
 
 \subsubsection{Inference on current trial with borrowing, with covariates}
 To undertake inference on the current trial, whilst borrowing from historical controls, the following changes are made to the
 previous call. In addition to specification of the argument \code{data} with data on the current trial, we must now specify the
-argument \code{data\_hist} with a \code{data.frame} containing data on historical controls. The borrowing model, which determines
-the parameterisation for the variance of the baseline hazard prior, is selected using the argument \code{model\_choice}. With
-\code{model\_choice="all"}, the variance of the log baseline hazard is aggregated across all split points. Alternatively, it can be
-defined separately for each split point using \code{model\_choice="mix"}  (the default). There is also an option for the standard
-univariate inverse gamma for each split via \code{model\_choice="uni"}, but a ``lump-and-smear'' mixture is recommended.  Here we
-use the default option, \code{model\_choice="mix"}.
+argument \code{data_hist} with a \code{data.frame} containing data on historical controls. The borrowing model, which determines
+the parameterisation for the variance of the baseline hazard prior, is selected using the argument \code{model_choice}. With
+\code{model_choice="all"}, the variance of the log baseline hazard is aggregated across all split points. Alternatively, it can be
+defined separately for each split point using \code{model_choice="mix"}  (the default). There is also an option for the standard
+univariate inverse gamma for each split via \code{model_choice="uni"}, but a ``lump-and-smear'' mixture is recommended.  Here we
+use the default option, \code{model_choice="mix"}.
 <<label=fit_sim_wb-mix, eval=TRUE, echo=TRUE, results=hide>>=
 fit_sim_wb_cndl <-
     BayesFBHborrow(formula=Surv(tte, event)~X_trt+X_01+X_02+X_03,
@@ -977,7 +736,7 @@ fit_sim_wb_cndl <-
                    hyperparameters = hyperparameters_sim,
                    tuning_parameters = tuning_parameters_sim,
                    warmup_iter = warmup_iter, iter = iter,
-                   refresh = warmup_iter, verbose = TRUE)
+                   verbose = TRUE)
 @
 
 <<label=save-sim-data-rslts, eval=TRUE, echo=FALSE, results=hide>>=
@@ -996,15 +755,18 @@ if(load_saved)
 \subsubsection{Output: Conditional Estimand versus Marginal Contrast}
 The print method shows two tables: treatment/pretreatment effects and survival probabilities, shown here formatted as booktabs
 tables. The treatment/pretreatment effects correspond to the model log hazard ratios for each MCMC sample and are summarised by 
-the posterior median together with the $95\%$ credible interval, as shown in Table \ref{tbl:fit_sim_wb_cndl_coef}.
+the posterior median together with the $95\%$ credible interval, as shown in Table \ref{tbl:fit-sim-wb-cndl-coef}.
 \begin{table}[H]
   \begin{center}
-  \caption{Conditional Treatment Effect and Pre-treatment Covariates Effects in model borrowing from historical controls.}
-  \label{tbl:fit_sim_wb_cndl_coef}
+  \caption{Conditional Treatment Effect and Pre-treatment Covariates Effects in model borrowing from historical controls,
+    simulated data.}
+  \label{tbl:fit-sim-wb-cndl-coef}
 <<label=prt_fit_sim_wb_cndl_coef, echo=FALSE, results=tex>>=
-trteff_sim_wb_cndl <- coef(fit_sim_wb_cndl)["X_trt", "logHR"]
+tbl_lgnd_cndl <- c(`logHR`="logHR", `exp(logHR)`="exp(logHR)", `CrIn.L`="L95 Crd Int", `CrIn.H`="U95 Crd Int")
+coef_tbl <- coef(fit_sim_wb_cndl)
+trteff_sim_wb_cndl <- coef_tbl["X_trt", "logHR"]
 fit_sim_wb_cndl_coef_kbl <-
-    kable(coef(fit_sim_wb_cndl), digits=4, format="latex", booktabs=TRUE,
+    kable(coef_tbl, digits=4, format="latex", booktabs=TRUE, col.names = tbl_lgnd_cndl[dimnames(coef_tbl)[[2]]],
           linesep="", table.envir=NULL)
 fit_sim_wb_cndl_coef_kbl
 @
@@ -1022,7 +784,7 @@ posterior median together with the $95\% $ credible interval.
 Notice that here ``conditional'' means that each of these estimates represents survival in a hypothetical group of patients with
 pretreatment covariates equal to their referent values. For continuous variables, these are their means over the dataset supplied
 in the argument \code{data}. For factor variables, they are also set at their means, but under a hypothetical design balanced
-across the levels of each factor. These results are shown in Table \ref{tbl:fit_sim_wb_cndl_surv}.
+across the levels of each factor. These results are shown in Table \ref{tbl:fit-sim-wb-cndl-surv}.
 <<label=mk_sim_cndl_surv_tbl, echo=FALSE, results=hide>>=
 fit_sim_wb_cndl_surv_kbl <-
     kable(summary(fit_sim_wb_cndl)$surv_summary, digits=4, format="latex",
@@ -1032,11 +794,14 @@ fit_sim_wb_cndl_surv_kbl <-
   \begin{center}
   \caption{Conditional per arm survival probabilities at landmark information fraction in model with borrowing from historical
     controls, simulated data.}
-  \label{tbl:fit_sim_wb_cndl_surv}
+  \label{tbl:fit-sim-wb-cndl-surv}
 <<label=prt_sim_cdnl_surv_tbl, echo=FALSE, results=tex>>=
+  tbl_lgnd_srv <- c(`Arm`="Arm", `InfFrac`="Inf Frac", `Time`="Follow Up", `Survival`="Survival",
+                `Surv_L`="L95 Crd Int", `Surv_U`="U95 Crd Int")
+  surv_tbl <- summary(fit_sim_wb_cndl)$surv_summary
   fit_sim_wb_cndl_surv_kbl <-
-      kable(summary(fit_sim_wb_cndl)$surv_summary, digits=4, format="latex",
-            booktabs=TRUE, linesep="", table.envir=NULL)
+      kable(surv_tbl, digits=4, format="latex", booktabs=TRUE,
+            col.names = tbl_lgnd_srv[dimnames(surv_tbl)[[2]]], linesep="", table.envir=NULL)
   fit_sim_wb_cndl_surv_kbl
 @
   \end{center}
@@ -1049,7 +814,7 @@ conditional survival function over the empirical distribution of the pretreatmen
 As the MTE is the difference of log-logged marginal per arm survival function averaged over pretreatment variables, it is a
 time-varying quantity and is therefore computed at landmark information fractions. It is extacted with via the \code{MTE} method. 
 
-G-computation can be requested by specifying \code{G\_compute=TRUE} in the original model call or by applying the \code{update}
+G-computation can be requested by specifying \code{G_compute=TRUE} in the original model call or by applying the \code{update}
 method to an existing fit. The latter applies the post-processing step to the retained posterior samples and does not rerun the
 MCMC sampler. 
 
@@ -1061,12 +826,14 @@ mgnl_cntrst_sim_wb <- update(fit_sim_wb_cndl, G_compute=TRUE)
 \begin{table}[H]
   \begin{center}
   \caption{Marginal treatment effect at landmark information fraction in model with borrowing from historical controls, simulated data.}
-  \label{tbl:mgnl_estmd}
+  \label{tbl:mgnl-estmd}
 <<label=mgnl_estmd, echo=FALSE, results=tex>>=
-mgnl_cntrst_sim_wb_MTE <- MTE(mgnl_cntrst_sim_wb)
-mgnl_cntrst_sim_wb_value <- mgnl_cntrst_sim_wb_MTE[4, "MTE"]
-mgnl_cntrst_sim_wb_kbl <- kable(MTE(mgnl_cntrst_sim_wb), digits=4,
-                                format="latex", booktabs=TRUE, linesep="",
+tbl_lgnd_mte <- c(`InfFrac` = "Inf Frac", `Time` = "Follow Up", `MTE`="MTE", `exp(MTE)` = "exp(MTE)", `MTE_L` = "L95 Crd Int", `MTE_U` = "U95 Crd Int")
+mgnl_cntrst_sim_wb_MTE <- MTE(fit_sim_wb_cndl)
+mgnl_cntrst_sim_wb_kbl <- kable(mgnl_cntrst_sim_wb_MTE, digits=4,
+                                format="latex", booktabs=TRUE,
+                                col.names = tbl_lgnd_mte[dimnames(mgnl_cntrst_sim_wb_MTE)[[2]]],
+                                linesep="",
                                 table.envir=NULL)
 mgnl_cntrst_sim_wb_kbl
 @
@@ -1076,8 +843,8 @@ The \code{print} method displays the summaries stored in the summary object. Con
 summaries are printed from the \code{coefficients} component. When G-computation has been requested, marginal treatment effects
 are printed separately from the \code{MTE} component.
 
-The same information can be extracted programmatically with \code{coef(summary(my\_bfbhb))} for the conditional coefficient table
-and \code{MTE(summary(my\_bfbhb))} for the marginal treatment-effect table.
+The same information can be extracted programmatically with \code{coef(summary(my_bfbhb))} for the conditional coefficient table
+and \code{MTE(summary(my_bfbhb))} for the marginal treatment-effect table.
 
 Some final comments regarding the calling sequence. Notice when this formula/data interface to the function is
 used, variable names are entirely immaterial, with the only unusual requirement that the treatment indicator, when included, must
@@ -1085,22 +852,22 @@ be listed first, in addition to consistency of variable names among all datasets
 provision is recommended in most cases. There is also a data only interface which offers additional flexibility, e.g. allows
 interactions et cetera. This option is used by omitting the \code{formula} argument, and instead, adhering to the following strict
 variable naming conventions. The time to event and event indicator variables must be named \code{tte} and \code{event}
-respectively, and variable names must begin with the prefix \code{X\_}. Again, a treatment indicator, when used, must be the first
+respectively, and variable names must begin with the prefix \code{X_}. Again, a treatment indicator, when used, must be the first
 of these so named variables in all datasets. Following this approach, factor variables can still be left as is or as character
 with intention to coerce as factor, and the function will recode them to dumy indcator variables by default, but without any
 possibility of entering interaction terms. If the user wishes to include interactions then in addition to using the data only
 interface, the argument \code{preprocess} must be set to \code{FALSE} and all recoding must be done manually.
 
 For publication purposes, the tables shown above can be extracted for downstream formatting with the user's preferred
-table-producing package. If \code{my\_bfbhb} is a fitted model with \code{G\_compute=FALSE}, the conditional coefficient and
-treatment-effect table is obtained with \code{coef(my\_bfbhb)}, while the corresponding landmark survival table is obtained with
-\code{summary(my\_bfbhb)\$surv\_summary}. 
+table-producing package. If \code{my_bfbhb} is a fitted model with \code{G_compute=FALSE}, the conditional coefficient and
+treatment-effect table is obtained with \code{coef(my_bfbhb)}, while the corresponding landmark survival table is obtained with
+\code{summary(my_bfbhb)\$surv_summary}. 
 
 If G-computation is requested, the updated object can be used to obtain the marginal treatment-effect table with
-\code{MTE(update(my\_bfbhb, G\_compute=TRUE))}. The marginal survival table is available from \code{summary(update(my\_bfbhb,
-  G\_compute=TRUE))\$surv\_summary}. 
+\code{MTE(update(my_bfbhb, G_compute=TRUE))}. The marginal survival table is available from \code{summary(update(my_bfbhb,
+  G_compute=TRUE))\$surv_summary}. 
 
-The fitted object's \code{samples} and \code{surv\_dat} components remain available for users who require posterior functionals
+The fitted object's \code{samples} and \code{surv_dat} components remain available for users who require posterior functionals
 beyond those returned by the standard extractors.
 
 \subsubsection{Output--MCMC Sampling details}
@@ -1115,16 +882,16 @@ such as:
     both current and historical data (maximum split points: $J$)}
 \end{itemize}
 While \code{samples} provides a comprehensive sampler output representation, the most practical form for baseline hazard samples is
-their snapped-to-common-grid representation, which is for each function, a \code{max\_grid} by \code{iter} matrix. Rather than
+their snapped-to-common-grid representation, which is for each function, a \code{max_grid} by \code{iter} matrix. Rather than
 creating it in an application of a \code{apply} like function at the end of the sampling loop, samples of these functions are
 written out to a binary file sample at a time and then read back in for computing summaries of posterior distributions at the end.  
-The binary files are discarded unless the user requests to keep them \code{keep\_bin\_files=TRUE} for downstream posterior
-functionals. The function \code{read\_haz\_mcmc\_smpls} can be used for this purpose as shown:
+The binary files are discarded unless the user requests to keep them \code{keep_bin_files=TRUE} for downstream posterior
+functionals. The function \code{read_haz_mcmc_smpls} can be used for this purpose as shown:
 
 <<label=show-read-call, eval=FALSE, echo=TRUE, results=hide>>=
 surv_dat_full <- read_haz_mcmc_smpls(fit_sim_wb_cndl)
 @
-The result is a list with three components, \code{cnd\_cumHz\_0}, \code{lml\_mgnl\_surv\_0}, and \code{lml\_mgnl\_surv\_1}. The
+The result is a list with three components, \code{cnd_cumHz_0}, \code{lml_mgnl_surv_0}, and \code{lml_mgnl_surv_1}. The
 first is the conditional cumulative hazard in the referrent group, while the latter two are the arm-specific logged negative
 logged marginal survival functions which are used to derive the marginal treatment-effect summaries returned by \code{MTE}. 
 
@@ -1136,12 +903,12 @@ The plot method for the \code{BayesFBHborrow} class will create upon the user's 
 hazards or survival functions in the form of a median coupled with 95\% pointwise credible interval ribbons, or density plot of
 the treatment effect (conditional or marginal at specified landmark information fraction) or a trace plot of any one of the state
 variables in the output component \code{samples}. These will have a differing interpretation depending on whether
-\code{G\_compute} was set to \code{FALSE} or \code{TRUE} as described above, namely that the relevant quantities are conditional or
+\code{G_compute} was set to \code{FALSE} or \code{TRUE} as described above, namely that the relevant quantities are conditional or
 marginal estimates from the G-computation.  A plot of the hazard function estimated from historical controls is created by
 <<label=mk-haz-plots-1, eval=TRUE, echo=TRUE, results=hide>>=
 p_cndl_haz_hst <- plot(fit_sim_hst_cndl, type="hazard")
 @
-This is used to check the adequacy of the smoothing parameters, (\code{J\_max}, \code{phi}, \code{c\_lambda}), as mentioned above,
+This is used to check the adequacy of the smoothing parameters, (\code{Jmax}, \code{phi}, \code{c_lambda}), as mentioned above,
 and as displayed in the Appendix (Figure \ref{fig:cndl_haz_hst}). The next two lines create plots of the per arm conditional
 hazard functions from the fit to the current trial without borrowing, and fit to the current trial with borrowing from historical
 controls, respectively.
@@ -1175,7 +942,7 @@ indicator (censrec), tumour grade (grade), and size (size).
 After loading the dataset, we perform some data wrangling. We use \code{diagdateb} to distinguish the current and historical
 datasets, and define the treatment variable, \code{tamoxifen}, as one less than the \{1,2\} valued original variable,
 \code{hormone}. We do the same for the variable \code{menopause} and convert the original variable, \code{grade} into a factor
-with levels corresponding to the original ordinal values 1, 2, and 3. We define a variable \code{hst\_flg} to help us artificially
+with levels corresponding to the original ordinal values 1, 2, and 3. We define a variable \code{hst_flg} to help us artificially
 create our current trial and historical datasets, based on whether a patient enrolled before or after the median enrollment
 time. Then, we create a factor variable, \code{group}, which we'll use to construct Kaplan-Meier plots. Finally, we split the
 dataset into ``current'' and ``historical'' portions according to the previously mentioned chronology of enrollement.
@@ -1271,9 +1038,9 @@ hyperparameters_gbcs <- list(beta_prior = 10^2,
                              phi = 3,
                              Jmax = 5)
 @
-We specify the variance on our vague prior on the regression coefficients of the historical study with \code{beta\_0\_prior}=$10^2$,
-and both the treatment effect and regression coefficients in the control group with \code{beta\_prior}=$10^2$. The MCMC sampler
-proposal scalars, \code{cprop\_beta} and \code{cprop\_beta\_0}, are tuned by running subsequent models, with much fewer total
+We specify the variance on our vague prior on the regression coefficients of the historical study with \code{beta_0_prior}=$10^2$,
+and both the treatment effect and regression coefficients in the control group with \code{beta_prior}=$10^2$. The MCMC sampler
+proposal scalars, \code{cprop_beta} and \code{cprop_beta_0}, are tuned by running subsequent models, with much fewer total
 iterations, so that we reach an acceptance ratio of $30\% \sim 40\%$. For example, we specify the following tuning parameters;
 <<label=tune, eval=TRUE, echo=TRUE>>=
 tuning_parameters_gbcs <- list(cprop_beta = 1.17,
@@ -1291,12 +1058,12 @@ BayesFBHborrow(Surv(rectime, censrec) ~ tamoxifen + menopause + size + grade,
                model_choice="mix",
                tuning_parameters=tuning_parameters_gbcs,
                hyperparameters=hyperparameters_gbcs,
-               iter=iter_tst, warmup_iter=warmup_iter_tst, refresh=0)
+               iter=iter_tst, warmup_iter=warmup_iter_tst)
 @
-leading to acceptable acceptance ratios of \code{beta\_acc\_ratio}=\Sexpr{test$beta_acc_ratio} and
-\code{beta\_0\_acc\_ratio}=\Sexpr{test$beta_0_acc_ratio}, respectively.
+leading to acceptable acceptance ratios of \code{beta_acc_ratio}=\Sexpr{test$beta_acc_ratio} and
+\code{beta_0_acc_ratio}=\Sexpr{test$beta_0_acc_ratio}, respectively.
 
-Our first model fit, for illustration purposes, is without borrowing. Our current dataset is \code{gbcs\_curr} and the treatment
+Our first model fit, for illustration purposes, is without borrowing. Our current dataset is \code{gbcs_curr} and the treatment
 variable is \code{tamoxifen}. We adjust for the pretreatment variables \code{menopase} (0/1) \code{size} (tumour size, continuous)
 and \code{grade} (histologic grade of tumour, factor).
 <<label=gbcs_fit_nb, eval=TRUE, echo=TRUE, results=hide>>=
@@ -1306,7 +1073,6 @@ fit_gbcs_nb_cndl <-
                    tuning_parameters=tuning_parameters_gbcs,
                    hyperparameters=hyperparameters_gbcs,
                    iter=iter, warmup_iter=warmup_iter,
-                   refresh=warmup_iter,
                    verbose=TRUE)
 @
 <<label=save-gbcs-nb-rslts, eval=TRUE, echo=FALSE, results=hide>>=
@@ -1331,10 +1097,7 @@ fit_gbcs_wb_cndl <-
                  tuning_parameters=tuning_parameters_gbcs,
                  hyperparameters=hyperparameters_gbcs,
                  iter=iter, warmup_iter=warmup_iter,
-                 refresh=warmup_iter,
-                 verbose=TRUE,
-                 max_grid=2000,
-                 standardise=TRUE)
+                 verbose=TRUE, max_grid=2000, standardise=TRUE)
 @
 <<label=save-gbcs-data-rslts, eval=TRUE, echo=FALSE, results=hide>>=
 if(production){
@@ -1353,16 +1116,18 @@ p_gbcs_wb_trace <- plot(fit_gbcs_wb_cndl, type="trace", col="tamoxifen")
 
 \begin{table}[H]
   \begin{center}
-  \caption{Conditional Treatment Effect and Pre-treatment Covariates Effects in model borrowing from historical controls.}
-  \label{tbl:fit_gbcs_wb_cndl_coef}
+  \caption{Conditional Treatment Effect and Pre-treatment Covariates Effects in model borrowing from historical controls, German
+    Breast Cancer Study.}
+  \label{tbl:fit-gbcs-wb-cndl-coef}
 <<label=fit_gbcs_wb_cndl_coef, echo=FALSE, results=tex>>=
-trteff_gbcs_wb_cndl_all <- coef(fit_gbcs_wb_cndl)[1,]
+coef_tbl <- coef(fit_gbcs_wb_cndl)
+trteff_gbcs_wb_cndl_all <- coef_tbl[1,]
 trteff_gbcs_wb_cndl <- unname(trteff_gbcs_wb_cndl_all["logHR"])
 trteff_gbcs_wb_cndl_L <- unname(trteff_gbcs_wb_cndl_all["CrIn.L"])
 trteff_gbcs_wb_cndl_U <- unname(trteff_gbcs_wb_cndl_all["CrIn.H"])
-trteff_gbcs_wb_cndl_all <- coef(fit_gbcs_wb_cndl)[1,]
 fit_gbcs_wb_cndl_coef_kbl <-
-    kable(coef(fit_gbcs_wb_cndl), digits=4, format="latex", booktabs=TRUE, linesep="", table.envir=NULL)
+    kable(coef_tbl, digits=4, format="latex", booktabs=TRUE, col.names = tbl_lgnd_cndl[dimnames(coef_tbl)[[2]]],
+          linesep="", table.envir=NULL)
 fit_gbcs_wb_cndl_coef_kbl
 @
   \end{center}
@@ -1425,6 +1190,16 @@ there is conjugacy, the Fisher information can be used to quantify the prior inf
 \cite{Neuenschwander2020}. Further research is required to be able to quantify the prospective information in the prior for more
 complicated models.
 
+An ad hoc measure of the gain in ESS due to borrowing can be formed as the square of the ratio of the widths of credible intervals
+corresponding to the model without borrowing to that of the model with borrowing. Not surprisingly, the relative gain in ESS
+comparing results with borrowing (table \ref{tbl:fit-sim-wb-cndl-coef}) to results without borrowing (table
+\ref{tbl:fit-sim-nb-cndl-coef}) is much greater in the simulated data examples in which the current and historical control arms
+were equally distributed, \Sexpr{round(rel_eff(wb=fit_sim_wb_cndl, nb=fit_sim_nb_cndl),3)}, than that was observed,
+\Sexpr{round(rel_eff(wb=fit_gbcs_wb_cndl, nb=fit_gbcs_nb_cndl),3)}, in the corresponding models fit to the 
+German Breast Cancer Study with and without borrowing (tables \ref{tbl:fit-gbcs-wb-cndl-coef} and
+\ref{tbl:fit-gbcs-nb-cndl-coef}), as the Kaplan-Meier plot clearly demonstrated non-exchangeability of historical and
+current control arms in that case.
+
 \section*{Disclosure}
 Darren Scott and Grant Izmirlian are employed full-time and possess equity holdings in AstraZeneca.
 
@@ -1485,12 +1260,60 @@ hyperparameters).
   fall below the tipping point of 0.5.} 
 \end{figure}
 
+\section{Additional Tables} \label{app:add-tbls}
+\begin{table}[H]
+  \begin{center}
+  \caption{Conditional Treatment Effect and Pre-treatment Covariates Effects in model fit to current trial alone (without
+    borrowing), simulated data.}
+  \label{tbl:fit-sim-nb-cndl-coef}
+<<label=prt-fit-sim-nb-cndl-coef, echo=FALSE, results=tex>>=
+coef_tbl <- coef(fit_sim_nb_cndl)
+fit_sim_nb_cndl_coef_kbl <-
+    kable(coef_tbl, digits=4, format="latex", booktabs=TRUE, col.names = tbl_lgnd_cndl[dimnames(coef_tbl)[[2]]],
+          linesep="", table.envir=NULL)
+fit_sim_nb_cndl_coef_kbl
+@
+\end{center}
+\end{table}
+
+\begin{table}[H]
+  \begin{center}
+  \caption{Conditional Treatment Effect and Pre-treatment Covariates Effects in model fit to current trial alone (without
+    borrowing), German Breast Cancer Study.}
+  \label{tbl:fit-gbcs-nb-cndl-coef}
+<<label=prt-fit-gbcs-nb-cndl-coef, echo=FALSE, results=tex>>=
+coef_tbl <- coef(fit_gbcs_nb_cndl)
+fit_gbcs_nb_cndl_coef_kbl <-
+    kable(coef_tbl, digits=4, format="latex", booktabs=TRUE, col.names = tbl_lgnd_cndl[dimnames(coef_tbl)[[2]]],
+          linesep="", table.envir=NULL)
+fit_gbcs_nb_cndl_coef_kbl
+@
+\end{center}
+\end{table}
+
+\begin{table}[H]
+  \begin{center}
+  \caption{Marginal treatment effect at landmark information fraction in model with borrowing from historical controls, German
+    Breast Cancer Study.}
+  \label{tbl:mgnl-estmd-gbcs}
+<<label=mgnl-estmd-gbcs, echo=FALSE, results=tex>>=
+mgnl_cntrst_gbcs_wb_MTE <- MTE(fit_gbcs_wb_cndl)
+mgnl_cntrst_gbcs_wb_kbl <- kable(mgnl_cntrst_gbcs_wb_MTE, digits=4,
+                                format="latex", booktabs=TRUE,
+                                col.names = tbl_lgnd_mte[dimnames(mgnl_cntrst_gbcs_wb_MTE)[[2]]],
+                                linesep="",
+                                table.envir=NULL)
+mgnl_cntrst_gbcs_wb_kbl
+@
+  \end{center}
+\end{table}
+
 \section{Additional Plots } \label{app:add_plots}
 \begin{figure}
   \begin{center}
    \caption{Estimated hazard from historical controls (left pane) and per arm hazard from current trial, no borrowing (right
      pane), German Breast Cancer Study data}
-   \label{fig:cndl_haz_hst}
+   \label{fig:cndl-haz-hst}
 <<label=plot_cndl_haz_hst, eval=TRUE, fig=TRUE, echo=FALSE, width=6, height=4>>=
 p_gbcs_cndl_haz_cmb
 @ 

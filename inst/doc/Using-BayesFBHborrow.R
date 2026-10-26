@@ -3,6 +3,7 @@
 ###################################################
 ### code chunk number 1: production
 ###################################################
+######################################################################################################################
 ## Here we specify whether this is a production run or validation run. Production runs use 6000 sampler iterations and
 ## 2000 warm-up iterations, whereas validation runs use 100 and 50, respectively. A production run takes about an hour
 ## and saves the results whereas a validation run checks for previously saved results to load and is very quick.
@@ -22,7 +23,7 @@
 ##                everywhere in the paper, and saves the results
 ##
 run_type <- "load saved"
-################################################################################################
+######################################################################################################################
 
 
 test <- run_type == "test"
@@ -150,7 +151,7 @@ fit_sim_hst_cndl <-
                    hyperparameters = hyperparameters_sim,
            tuning_parameters = tuning_parameters_sim,
            warmup_iter = warmup_iter, iter = iter,
-           refresh = warmup_iter, verbose = TRUE)
+           verbose = TRUE)
 
 
 ###################################################
@@ -162,7 +163,7 @@ fit_sim_nb_cndl <-
                    hyperparameters = hyperparameters_sim,
            tuning_parameters = tuning_parameters_sim,
            warmup_iter = warmup_iter, iter = iter,
-           refresh = warmup_iter, verbose = TRUE)
+           verbose = TRUE)
 
 
 ###################################################
@@ -175,7 +176,7 @@ fit_sim_wb_cndl <-
                    hyperparameters = hyperparameters_sim,
                    tuning_parameters = tuning_parameters_sim,
                    warmup_iter = warmup_iter, iter = iter,
-                   refresh = warmup_iter, verbose = TRUE)
+                   verbose = TRUE)
 
 
 ###################################################
@@ -196,9 +197,11 @@ if(load_saved)
 ###################################################
 ### code chunk number 16: prt_fit_sim_wb_cndl_coef
 ###################################################
-trteff_sim_wb_cndl <- coef(fit_sim_wb_cndl)["X_trt", "logHR"]
+tbl_lgnd_cndl <- c(`logHR`="logHR", `exp(logHR)`="exp(logHR)", `CrIn.L`="L95 Crd Int", `CrIn.H`="U95 Crd Int")
+coef_tbl <- coef(fit_sim_wb_cndl)
+trteff_sim_wb_cndl <- coef_tbl["X_trt", "logHR"]
 fit_sim_wb_cndl_coef_kbl <-
-    kable(coef(fit_sim_wb_cndl), digits=4, format="latex", booktabs=TRUE,
+    kable(coef_tbl, digits=4, format="latex", booktabs=TRUE, col.names = tbl_lgnd_cndl[dimnames(coef_tbl)[[2]]],
           linesep="", table.envir=NULL)
 fit_sim_wb_cndl_coef_kbl
 
@@ -214,9 +217,12 @@ fit_sim_wb_cndl_surv_kbl <-
 ###################################################
 ### code chunk number 18: prt_sim_cdnl_surv_tbl
 ###################################################
+  tbl_lgnd_srv <- c(`Arm`="Arm", `InfFrac`="Inf Frac", `Time`="Follow Up", `Survival`="Survival",
+                `Surv_L`="L95 Crd Int", `Surv_U`="U95 Crd Int")
+  surv_tbl <- summary(fit_sim_wb_cndl)$surv_summary
   fit_sim_wb_cndl_surv_kbl <-
-      kable(summary(fit_sim_wb_cndl)$surv_summary, digits=4, format="latex",
-            booktabs=TRUE, linesep="", table.envir=NULL)
+      kable(surv_tbl, digits=4, format="latex", booktabs=TRUE,
+            col.names = tbl_lgnd_srv[dimnames(surv_tbl)[[2]]], linesep="", table.envir=NULL)
   fit_sim_wb_cndl_surv_kbl
 
 
@@ -229,10 +235,12 @@ mgnl_cntrst_sim_wb <- update(fit_sim_wb_cndl, G_compute=TRUE)
 ###################################################
 ### code chunk number 20: mgnl_estmd
 ###################################################
-mgnl_cntrst_sim_wb_MTE <- MTE(mgnl_cntrst_sim_wb)
-mgnl_cntrst_sim_wb_value <- mgnl_cntrst_sim_wb_MTE[4, "MTE"]
-mgnl_cntrst_sim_wb_kbl <- kable(MTE(mgnl_cntrst_sim_wb), digits=4,
-                                format="latex", booktabs=TRUE, linesep="",
+tbl_lgnd_mte <- c(`InfFrac` = "Inf Frac", `Time` = "Follow Up", `MTE`="MTE", `exp(MTE)` = "exp(MTE)", `MTE_L` = "L95 Crd Int", `MTE_U` = "U95 Crd Int")
+mgnl_cntrst_sim_wb_MTE <- MTE(fit_sim_wb_cndl)
+mgnl_cntrst_sim_wb_kbl <- kable(mgnl_cntrst_sim_wb_MTE, digits=4,
+                                format="latex", booktabs=TRUE,
+                                col.names = tbl_lgnd_mte[dimnames(mgnl_cntrst_sim_wb_MTE)[[2]]],
+                                linesep="",
                                 table.envir=NULL)
 mgnl_cntrst_sim_wb_kbl
 
@@ -371,7 +379,7 @@ BayesFBHborrow(Surv(rectime, censrec) ~ tamoxifen + menopause + size + grade,
                model_choice="mix",
                tuning_parameters=tuning_parameters_gbcs,
                hyperparameters=hyperparameters_gbcs,
-               iter=iter_tst, warmup_iter=warmup_iter_tst, refresh=0)
+               iter=iter_tst, warmup_iter=warmup_iter_tst)
 
 
 ###################################################
@@ -383,7 +391,6 @@ fit_gbcs_nb_cndl <-
                    tuning_parameters=tuning_parameters_gbcs,
                    hyperparameters=hyperparameters_gbcs,
                    iter=iter, warmup_iter=warmup_iter,
-                   refresh=warmup_iter,
                    verbose=TRUE)
 
 
@@ -412,10 +419,7 @@ fit_gbcs_wb_cndl <-
                  tuning_parameters=tuning_parameters_gbcs,
                  hyperparameters=hyperparameters_gbcs,
                  iter=iter, warmup_iter=warmup_iter,
-                 refresh=warmup_iter,
-                 verbose=TRUE,
-                 max_grid=2000,
-                 standardise=TRUE)
+                 verbose=TRUE, max_grid=2000, standardise=TRUE)
 
 
 ###################################################
@@ -439,13 +443,14 @@ p_gbcs_wb_trace <- plot(fit_gbcs_wb_cndl, type="trace", col="tamoxifen")
 ###################################################
 ### code chunk number 40: fit_gbcs_wb_cndl_coef
 ###################################################
-trteff_gbcs_wb_cndl_all <- coef(fit_gbcs_wb_cndl)[1,]
+coef_tbl <- coef(fit_gbcs_wb_cndl)
+trteff_gbcs_wb_cndl_all <- coef_tbl[1,]
 trteff_gbcs_wb_cndl <- unname(trteff_gbcs_wb_cndl_all["logHR"])
 trteff_gbcs_wb_cndl_L <- unname(trteff_gbcs_wb_cndl_all["CrIn.L"])
 trteff_gbcs_wb_cndl_U <- unname(trteff_gbcs_wb_cndl_all["CrIn.H"])
-trteff_gbcs_wb_cndl_all <- coef(fit_gbcs_wb_cndl)[1,]
 fit_gbcs_wb_cndl_coef_kbl <-
-    kable(coef(fit_gbcs_wb_cndl), digits=4, format="latex", booktabs=TRUE, linesep="", table.envir=NULL)
+    kable(coef_tbl, digits=4, format="latex", booktabs=TRUE, col.names = tbl_lgnd_cndl[dimnames(coef_tbl)[[2]]],
+          linesep="", table.envir=NULL)
 fit_gbcs_wb_cndl_coef_kbl
 
 
@@ -475,12 +480,44 @@ p_gbcs_cndl_TrtEff_cmb
 
 
 ###################################################
-### code chunk number 44: plot_cndl_haz_hst
+### code chunk number 44: prt-fit-sim-nb-cndl-coef
+###################################################
+coef_tbl <- coef(fit_sim_nb_cndl)
+fit_sim_nb_cndl_coef_kbl <-
+    kable(coef_tbl, digits=4, format="latex", booktabs=TRUE, col.names = tbl_lgnd_cndl[dimnames(coef_tbl)[[2]]],
+          linesep="", table.envir=NULL)
+fit_sim_nb_cndl_coef_kbl
+
+
+###################################################
+### code chunk number 45: prt-fit-gbcs-nb-cndl-coef
+###################################################
+coef_tbl <- coef(fit_gbcs_nb_cndl)
+fit_gbcs_nb_cndl_coef_kbl <-
+    kable(coef_tbl, digits=4, format="latex", booktabs=TRUE, col.names = tbl_lgnd_cndl[dimnames(coef_tbl)[[2]]],
+          linesep="", table.envir=NULL)
+fit_gbcs_nb_cndl_coef_kbl
+
+
+###################################################
+### code chunk number 46: mgnl-estmd-gbcs
+###################################################
+mgnl_cntrst_gbcs_wb_MTE <- MTE(fit_gbcs_wb_cndl)
+mgnl_cntrst_gbcs_wb_kbl <- kable(mgnl_cntrst_gbcs_wb_MTE, digits=4,
+                                format="latex", booktabs=TRUE,
+                                col.names = tbl_lgnd_mte[dimnames(mgnl_cntrst_gbcs_wb_MTE)[[2]]],
+                                linesep="",
+                                table.envir=NULL)
+mgnl_cntrst_gbcs_wb_kbl
+
+
+###################################################
+### code chunk number 47: plot_cndl_haz_hst
 ###################################################
 p_gbcs_cndl_haz_cmb
 
 
 ###################################################
-### code chunk number 45: trace
+### code chunk number 48: trace
 ###################################################
 p_gbcs_wb_trace

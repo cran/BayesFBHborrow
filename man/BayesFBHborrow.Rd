@@ -14,13 +14,12 @@ Fit the Bayesian Flexible Baseline Hazard Model with Borrowing via MCMC/MH
 BayesFBHborrow(formula = NULL, data, data_hist = NULL, subset, na.action,
                CntlOnly = FALSE, model_choice = "mix", tuning_parameters = NULL,
                hyperparameters = NULL, iter = 1000, warmup_iter = 100,
-               refresh = 0, verbose = FALSE, max_grid = 2000, standardise = TRUE,
+               verbose = FALSE, max_grid = 2000, standardise = TRUE,
                G_compute = FALSE, preprocess = TRUE, fnm_cnd_haz_0 = "cnd_haz_0",
                fnm_cnd_cumHz_0 = "cnd_cumHz_0", fnm_lml_mgnl_surv_0 = "lml_mgnl_surv_0",
                fnm_lml_mgnl_surv_1 = "lml_mgnl_surv_1", fnm_mgnl_haz_0 = "mgnl_haz_0",
                fnm_mgnl_haz_1 = "mgnl_haz_1", sfx = NULL,
-               keep_bin_files = FALSE, n_chains = 1L, hpc_max_cores = 16,
-               dbg = FALSE, ...)
+               keep_bin_files = FALSE, dbg = FALSE, ...)
 }
 \arguments{
   \item{formula}{
@@ -94,12 +93,9 @@ BayesFBHborrow(formula = NULL, data, data_hist = NULL, subset, na.action,
   \item{warmup_iter}{
     Number of warmup iterations (burn-in) for MCMC sampler.
   }
-  \item{refresh}{
-    Number of iterations between printed screen updates.
-  }
   \item{verbose}{
-    Whether or not to print the progress to the console
-    every \code{refresh} iterations. Defaults to \code{FALSE}. 
+    Whether or not you want to see the status messages.
+    Defaults to \code{FALSE}. 
   }
   \item{max_grid}{
     Grid size for the smoothed baseline hazard. Default value is 2000.
@@ -183,22 +179,6 @@ BayesFBHborrow(formula = NULL, data, data_hist = NULL, subset, na.action,
     then set this to \code{TRUE} and then use
     \code{read_haz_mcmc_samples} (see below). 
   }
-  \item{n_chains}{
-    Number of chains to sample in parallel post warmup. This is
-    determined automatically by the function depending on the
-    capabilities of your machine and the OS you are using
-    (unix alike [mac/WSL], HPC cluster, or windows). No need
-    to set this
-  }
-  \item{hpc_max_cores}{
-    If you use the HPC cluster either in the workbench or
-    setting up an interactive node at the command line, you should
-    request 'Rstudio large' and then set the number of cores to
-    anything up to 32. You should request 16GB of ram so you might
-    have to play with setting until you're given permission to open the
-    session. At AZ I've had success with 16GB and 16 cores. In
-    any case, set this to the number of cores you're able to get. 
-  }
   \item{dbg}{
     When running in command line mode, set to \code{TRUE} in order to
     enable line by line debugging.
@@ -269,6 +249,40 @@ BayesFBHborrow(formula = NULL, data, data_hist = NULL, subset, na.action,
 \author{
   Darren A. V. Scott, Sophia Axillus and Grant Izmirlian
 }
+\note{
+  This runs in parallel using the future and future.apply. You need do
+  nothing special if you're on a mac, linux PC, WSL or Windows. If
+  you're working on an HPC cluster at the command line, then you must
+  request a specially enabled ineractive node via the following:
+  \preformatted{
+    srun --partition=interactive \
+         --nodes=1 \
+         --ntasks=1 \
+         --cpus-per-task=16 \
+         --mem=16G \
+         --time=02:00:00 \
+         --pty /bin/bash
+  }
+  Once in the interactive node, you must load R:
+  \preformatted{
+    module load R
+  }
+  or if you want a tricked out version of R, you need to lookup
+  the name of the custom module created at your institution.
+  You can look these up via the command:
+  \preformatted{
+    module spider R
+  }
+  Then once you've identified an appropriate module, then
+  execute the appropriate \code{module load} command, e.g.
+  at Astrazeneca:
+  \preformatted{
+    module load R-bundle-Bioconductor/3.22-foss-2025a-R-4.5.1
+  }
+  Otherwise if you have in browser workbench access to the HPC
+  cluster, you will use the menu guided options to select the multiple
+  cpus (or nodes) per task. 
+}
 \seealso{\code{plot}, \code{summary}, \code{update} methods for class
   \code{"BayesFBHborrow"} objects
 }
@@ -295,36 +309,32 @@ DAT_hst <- historical_data(dat_lst)
   \donttest{
     test_f0 <- BayesFBHborrow(Surv(tte, event)~1, data = DAT_hst,
                               CntlOnly=TRUE, iter = 200, warmup_iter = 50,
-                              refresh = 0, verbose = FALSE)
+                              verbose = FALSE)
 
     ## cntls only; with cov's
     test_f1 <- BayesFBHborrow(Surv(tte, event) ~ X_01 + X_02 + X_03,
                               data = DAT_hst, CntlOnly=TRUE,
-                              iter = 200, warmup_iter = 50, refresh = 0,
-                              verbose = FALSE)
+                              iter = 200, warmup_iter = 50, verbose = FALSE)
     
     ##  trtd+cntls; w/o borrow; no cov's: 
     test_f2 <- BayesFBHborrow(Surv(tte, event) ~ X_trt, data = DAT_cc,
-                              iter = 200, warmup_iter = 50, refresh = 0,
-                              verbose = FALSE)
+                              iter = 200, warmup_iter = 50, verbose = FALSE)
     
     ## trtd+cntls; w borrow, no cov's:
     test_f3 <- BayesFBHborrow(Surv(tte, event) ~ X_trt, data = DAT_cc,
                               data_hist = DAT_hst, model_choice = 'mix',
-                              iter = 200, warmup_iter = 50, refresh = 0,
-                              verbose = FALSE)
+                              iter = 200, warmup_iter = 50, verbose = FALSE)
 
     ##  trtd+cntls; w/o borrow; w cov's: 
     test_f4 <- BayesFBHborrow(Surv(tte, event) ~ X_trt + X_01 + X_02 + X_03,
                               data = DAT_cc, model_choice = 'mix',
-                              iter = 200, warmup_iter = 50, refresh = 0,
-                              verbose = FALSE)
+                              iter = 200, warmup_iter = 50, verbose = FALSE)
     
     ## trtd+cntls; w borrow, w cov's:
     test_f5 <- BayesFBHborrow(Surv(tte, event) ~ X_trt + X_01 + X_02 + X_03,
                               data = DAT_cc, data_hist = DAT_hst,
                               model_choice = 'mix', iter = 10, warmup_iter = 5,
-                              refresh = 0, verbose = FALSE)
+                              verbose = FALSE)
   }
 }
 \concept{Bayesian borrowing}

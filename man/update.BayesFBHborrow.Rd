@@ -12,14 +12,14 @@
        object, formula = NULL, data, data_hist = NULL,
        subset, na.action, CntlOnly = FALSE, model_choice = "mix",
        tuning_parameters = NULL, hyperparameters = NULL, iter = 1000,
-       warmup_iter = 100, refresh = 0, verbose = FALSE, max_grid = 2000,
+       warmup_iter = 100, verbose = FALSE, max_grid = 2000,
        standardise = TRUE, G_compute = FALSE, preprocess = TRUE,
        fnm_cnd_haz_0 = "cnd_haz_0", fnm_cnd_cumHz_0 = "cnd_cumHz_0",
        fnm_lml_mgnl_surv_0 = "lml_mgnl_surv_0",
        fnm_lml_mgnl_surv_1 = "lml_mgnl_surv_1",
        fnm_mgnl_haz_0 =  "mgnl_haz_0",
        fnm_mgnl_haz_1 = "mgnl_haz_1", sfx = NULL, keep_bin_files= FALSE,
-       n_chains = 1L, hpc_max_cores = 16, dbg = FALSE, evaluate = TRUE,
+       dbg = FALSE, evaluate = TRUE,
        ...) 
 }
 \arguments{
@@ -97,12 +97,9 @@
   \item{warmup_iter}{
     Number of warmup iterations (burn-in) for MCMC sampler.
   }
-  \item{refresh}{
-    Number of iterations between printed screen updates.
-  }
   \item{verbose}{
-    Whether or not to print the progress to the console
-    every \code{refresh} iterations. Defaults to \code{FALSE}. 
+    Whether or not you want to see the status messages.
+    Defaults to \code{FALSE}. 
   }
   \item{max_grid}{
     Grid size for the smoothed baseline hazard. Default value is 2000.
@@ -185,22 +182,6 @@
     of MCMC/MH sampled functions snapped to the finely spaced grid
     then set this to \code{TRUE} and then use
     \code{read_haz_mcmc_samples} (see below). 
-  }
-  \item{n_chains}{
-    Number of chains to sample in parallel post warmup. This is
-    determined automatically by the function depending on the
-    capabilities of your machine and the OS you are using
-    (unix alike [mac/WSL], HPC cluster, or windows). No need
-    to set this
-  }
-  \item{hpc_max_cores}{
-    If you use the HPC cluster either in the workbench or
-    setting up an interactive node the command line you should
-    request 'Rstudio large' and then set the number of cores to
-    anything up to 32. You should request 16GB of ram so you might
-    have to play with setting until you're given permission to open the
-    session. At AZ I've had success with 16GB and 16 cores. In
-    any case, set this to the number of cores you're able to get. 
   }
   \item{dbg}{
     When running in command line mode, set to \code{TRUE} in order to

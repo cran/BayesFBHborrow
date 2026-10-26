@@ -11,7 +11,6 @@ BayesFBHborrow <- function(formula = NULL,
                            hyperparameters = NULL,
                            iter = 1000,
                            warmup_iter = 100,
-                           refresh = 0,
                            verbose = FALSE,
                            max_grid = 2000,
                            standardise = TRUE,
@@ -25,8 +24,6 @@ BayesFBHborrow <- function(formula = NULL,
                            fnm_mgnl_haz_1 = "mgnl_haz_1",
                            sfx = NULL,
                            keep_bin_files = FALSE,
-                           n_chains = 1L,
-                           hpc_max_cores = 16,
                            dbg=FALSE,
                            ...){
 
@@ -55,7 +52,6 @@ BayesFBHborrow.WBorrow <-
              hyperparameters = NULL,
              iter = 1000,
              warmup_iter = 100,
-             refresh = 0,
              verbose = FALSE,
              max_grid = 2000,
              standardise = TRUE,
@@ -69,11 +65,10 @@ BayesFBHborrow.WBorrow <-
              fnm_mgnl_haz_1 = "mgnl_haz_1",
              sfx = NULL,
              keep_bin_files = FALSE,
-             n_chains = 1L,
-             hpc_max_cores = 16,
              dbg=FALSE,
              ...){
-   ## when doing borrowing we have a current data set with a treatment indicator and controls only historical dataset
+   ## when doing borrowing we have a current data set with a treatment indicator and
+   ## controls only historical dataset
    if(dbg)browser()
   .call. <- mf <- match.call()
   .call.[[1]] <- as.name("BayesFBHborrow")
@@ -87,10 +82,10 @@ BayesFBHborrow.WBorrow <-
       mf[[1]] <- as.name("BFBHB.form.intrfc")
 
       mf$model_choice <- mf$tuning_parameters <- mf$hyperparameters <- 
-          mf$iter <- mf$warmup_iter <- mf$refresh <- mf$verbose <- mf$max_grid <- 
-              mf$standardise <- mf$G_compute <- mf$fnm_cnd_haz_0 <- mf$fnm_cnd_cumHz_0 <- mf$fnm_lml_mgnl_surv_0 <- 
-                  mf$fnm_lml_mgnl_surv_1 <- mf$fnm_mgnl_haz_0 <- mf$fnm_mgnl_haz_1 <- mf$sfx <- mf$keep_bin_files <-
-                      mf$n_chains <- mf$hpc_max_cores <- NULL
+          mf$iter <- mf$warmup_iter <- mf$verbose <- mf$max_grid <- 
+              mf$standardise <- mf$G_compute <- mf$fnm_cnd_haz_0 <- mf$fnm_cnd_cumHz_0 <-
+                  mf$fnm_lml_mgnl_surv_0 <- mf$fnm_lml_mgnl_surv_1 <- mf$fnm_mgnl_haz_0 <-
+                      mf$fnm_mgnl_haz_1 <- mf$sfx <- mf$keep_bin_files <- NULL
       mf <- eval(mf)
                  
       R <- mf$R
@@ -167,17 +162,37 @@ BayesFBHborrow.WBorrow <-
     for(a in names(tuning_parameters)) set_tp_call[[a]] <- tuning_parameters[[a]]
   tuning_parameters <- eval(set_tp_call)
 
+  ## Determine if environment supports forking
+  ## e.g.
+  ## PC linux, WSL, mac, HPC linux in R at the command line: YES
+  ## Windows or the above in RSTUDIO: NO      
+  is_fork <- fork_is_available()
+  is_hpc <- is_hpc_environment()
 
-  min_iter_per_chain <- 100    
-  max_cores <- min(hpc_max_cores, availableCores() - 4)
-  n_chains <- max(1, min(max_cores, floor(iter/min_iter_per_chain)))
+  ## Determine available cores
+  min_iter_per_chain <- 100
+  if(is_hpc && is_fork) {
+    slrm_cpus <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
+    n_cores <- ifelse(!is.na(slrm_cpus), slrm_cpus, availableCores())
+  }
+  if(!is_hpc_environment()) n_cores <- availableCores() - 2
+
+  n_chains <- max(1, min(n_cores, floor(iter/min_iter_per_chain)))    
+  is_fork <- is_fork && n_chains > 1
+
+  ## set iterations per chain
   iter_per_chain <- ceiling(iter/n_chains)    
 
-  strategy <- if (Sys.getenv("SLURM_JOB_ID") != "") "multisession" else "multicore"
-  plan(strategy, workers = n_chains)
+  ## set the future plan (the way that parallelization will be done)
+  ## accordingly.
+  ## NOTE: multicore is much much faster
+  ##       also note that policy on HPC may forbid forking even if it should be possible
+  fut_pln <- c("multisession", "multicore")[1 + is_fork]
+  
+  plan(fut_pln, workers = n_chains)
 
   if(verbose) message(sprintf("Using %g chains in %g %s with %g iterations per %s.\n", n_chains,
-                              n_chains, strategy %,% "s", iter_per_chain, strategy))
+                              n_chains, fut_pln %,% "s", iter_per_chain, fut_pln))
 
   if(missing(sfx)) sfx <- rnd_hex_strng(6)
         
@@ -191,7 +206,7 @@ BayesFBHborrow.WBorrow <-
                          hyperparameters = hyperparameters,
                          iter = iter_per_chain,
                          warmup_iter = warmup_iter,
-                         refresh = refresh,
+                         verbose = verbose,
                          max_grid = max_grid,
                          CntlOnly = CntlOnly,
                          standardise = standardise,
@@ -239,7 +254,6 @@ BayesFBHborrow.NoBorrow <-
              hyperparameters = NULL,
              iter = 1000,
              warmup_iter = 100,
-             refresh = 0,
              verbose = FALSE,
              max_grid = 2000,
              standardise = TRUE,
@@ -253,8 +267,6 @@ BayesFBHborrow.NoBorrow <-
              fnm_mgnl_haz_1 = "mgnl_haz_1",
              sfx = NULL,
              keep_bin_files = FALSE,
-             n_chains = 1L,
-             hpc_max_cores = 16,
              dbg=FALSE, 
              ...){
 
@@ -270,10 +282,10 @@ BayesFBHborrow.NoBorrow <-
       mf[[1]] <- as.name("BFBHB.form.intrfc")
       
       mf$model_choice <- mf$tuning_parameters <- mf$hyperparameters <- 
-          mf$iter <- mf$warmup_iter <- mf$refresh <- mf$verbose <- mf$max_grid <- 
-              mf$standardise <- mf$G_compute <- mf$fnm_cnd_haz_0 <- mf$fnm_cnd_cumHz_0 <- mf$fnm_lml_mgnl_surv_0 <- 
-                  mf$fnm_lml_mgnl_surv_1 <- mf$fnm_mgnl_haz_0 <- mf$fnm_mgnl_haz_1 <- mf$sfx <- mf$keep_bin_files <-
-                      mf$n_chains <- mf$hpc_max_cores <- NULL
+          mf$iter <- mf$warmup_iter <- mf$verbose <- mf$max_grid <- 
+              mf$standardise <- mf$G_compute <- mf$fnm_cnd_haz_0 <- mf$fnm_cnd_cumHz_0 <-
+                  mf$fnm_lml_mgnl_surv_0 <- mf$fnm_lml_mgnl_surv_1 <- mf$fnm_mgnl_haz_0 <-
+                      mf$fnm_mgnl_haz_1 <- mf$sfx <- mf$keep_bin_files <- NULL
       mf <- eval(mf)
                  
       R <- mf$R
@@ -333,23 +345,37 @@ BayesFBHborrow.NoBorrow <-
     for(a in names(tuning_parameters)) set_tp_call[[a]] <- tuning_parameters[[a]]
   tuning_parameters <- eval(set_tp_call)
 
-  
-  ## don't do less than 100 on a core
-  ## so once you know n_cores, then n_chains should be max(iter/n_cores, 100)
-  ## unless iter is small enough to wait for
-  ## how about n_cores <- min(max avail, iter/200)
-  ##   n_chains <- max(iter/n_cores, 
-  ##
-  min_iter_per_chain <- 100    
-  max_cores <- min(hpc_max_cores, availableCores() - 4)
-  n_chains <- max(1, min(max_cores, floor(iter/min_iter_per_chain)))
+  ## Determine if environment supports forking
+  ## e.g.
+  ## PC linux, WSL, mac, HPC linux in R at the command line: YES
+  ## Windows or the above in RSTUDIO: NO      
+  is_fork <- fork_is_available()
+  is_hpc <- is_hpc_environment()
+
+  ## Determine available cores
+  min_iter_per_chain <- 100
+  if(is_hpc && is_fork) {
+    slrm_cpus <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
+    n_cores <- ifelse(!is.na(slrm_cpus), slrm_cpus, availableCores())
+  }
+  if(!is_hpc_environment()) n_cores <- availableCores() - 2
+
+  n_chains <- max(1, min(n_cores, floor(iter/min_iter_per_chain)))    
+  is_fork <- is_fork && n_chains > 1
+
+  ## set iterations per chain
   iter_per_chain <- ceiling(iter/n_chains)    
 
-  strategy <- if (Sys.getenv("SLURM_JOB_ID") != "") "multisession" else "multicore"
-  plan(strategy, workers = n_chains)
+  ## set the future plan (the way that parallelization will be done)
+  ## accordingly.
+  ## NOTE: multicore is much much faster
+  ##       also note that policy on HPC may forbid forking even if it should be possible
+  fut_pln <- c("multisession", "multicore")[1 + is_fork]
+  
+  plan(fut_pln, workers = n_chains)
 
   if(verbose) message(sprintf("Using %g chains in %g %s with %g iterations per %s.\n", n_chains,
-                              n_chains, strategy %,% "s", iter_per_chain, strategy))
+                              n_chains, fut_pln %,% "s", iter_per_chain, fut_pln))
 
   if(missing(sfx)) sfx <- rnd_hex_strng(6)
       
@@ -360,8 +386,8 @@ BayesFBHborrow.NoBorrow <-
                           hyperparameters = hyperparameters,
                           iter = iter_per_chain,
                           warmup_iter = warmup_iter,
-                          refresh = refresh,
-                          max_grid = max_grid,
+                          verbose = verbose,
+                          max_grid = max_grid,                          
                           CntlOnly = CntlOnly,
                           standardise = standardise,
                           G_compute = G_compute,
@@ -570,7 +596,7 @@ GibbsMH_wborrow <- function(Y,
                             hyperparameters,
                             iter,
                             warmup_iter,
-                            refresh,
+                            verbose, 
                             max_grid,
                             CntlOnly,
                             standardise,
@@ -583,7 +609,7 @@ GibbsMH_wborrow <- function(Y,
                             fnm_mgnl_haz_1,
                             sfx,
                             keep_bin_files,
-                            n_chains = 1L) {
+                            n_chains) {
 
   ## make temp directory for files
   dir_name <- "." %,% sfx
@@ -599,15 +625,6 @@ GibbsMH_wborrow <- function(Y,
   fnm_mgnl_haz_0 <- dir_name %,% sl %,% fnm_mgnl_haz_0
   fnm_mgnl_haz_1 <- dir_name %,% sl %,% fnm_mgnl_haz_1
    
-
-  ## ---------------------------------------------------------------
-  ## Validate parallel-processing arguments
-  ## ---------------------------------------------------------------
-  n_chains <- as.integer(n_chains)
-
-  if (is.na(n_chains) || n_chains < 1L) {
-    stop("'n_chains' must be a positive integer.")
-  }
 
   ## `iter` is now the number of retained iterations per child chain.
   ## The downstream posterior summaries use the total number of draws.
@@ -654,7 +671,7 @@ GibbsMH_wborrow <- function(Y,
     tuning_parameters = tuning_parameters,
     hyperparameters = hyperparameters,
 
-    refresh = refresh,
+    verbose = verbose,
     max_grid = max_grid,
     CntlOnly = CntlOnly,
     G_compute = G_compute,
@@ -687,12 +704,14 @@ GibbsMH_wborrow <- function(Y,
   ## `initial_states = list(initialize = TRUE)` tells the chain function
   ## to perform the original state initialization internally.
   ## ---------------------------------------------------------------
+
   warmup_out <- GibbsMH_wborrow_chain(
     input_list = input_list,
     initial_states = list(initialize = TRUE),
     iter = warmup_iter,
     is_warmup = TRUE,
-    k = 0L
+    k = 0L,
+    p = single_line_printer
   )
 
   warmup_state <- warmup_out$state_current_vals
@@ -705,7 +724,6 @@ GibbsMH_wborrow <- function(Y,
   ## ---------------------------------------------------------------
 
   if (n_chains == 1L) {
-    p <- message
     chain_out <- list(
       GibbsMH_wborrow_chain(
         input_list = input_list,
@@ -713,7 +731,7 @@ GibbsMH_wborrow <- function(Y,
         iter = iter,
         is_warmup = FALSE,
         k = 1L,
-        p = p
+        p = single_line_printer
       )
     )
   } else {
@@ -1514,7 +1532,7 @@ GibbsMH_noborrow <- function(Y,
                              hyperparameters,
                              iter,
                              warmup_iter,
-                             refresh,
+                             verbose,
                              max_grid,
                              CntlOnly,
                              standardise,
@@ -1527,7 +1545,7 @@ GibbsMH_noborrow <- function(Y,
                              fnm_mgnl_haz_1,
                              sfx,
                              keep_bin_files,
-                             n_chains = 1L) {
+                             n_chains) {
   ## make temp directory for files
   dir_name <- "." %,% sfx
   dir.create(dir_name)
@@ -1542,12 +1560,6 @@ GibbsMH_noborrow <- function(Y,
   fnm_mgnl_haz_0 <- dir_name %,% sl %,% fnm_mgnl_haz_0
   fnm_mgnl_haz_1 <- dir_name %,% sl %,% fnm_mgnl_haz_1
  
-  n_chains <- as.integer(n_chains)
-
-  if (is.na(n_chains) || n_chains < 1L) {
-    stop("'n_chains' must be a positive integer.")
-  }
-
   ## `iter` now means iterations retained per post-warmup child.
   iter_total <- iter * n_chains
 
@@ -1579,7 +1591,7 @@ GibbsMH_noborrow <- function(Y,
     tuning_parameters = tuning_parameters,
     hyperparameters = hyperparameters,
 
-    refresh = refresh,
+    verbose = verbose,
     max_grid = max_grid,
     CntlOnly = CntlOnly,
     G_compute = G_compute,
@@ -1606,7 +1618,8 @@ GibbsMH_noborrow <- function(Y,
     initial_states = list(initialize = TRUE),
     iter = warmup_iter,
     is_warmup = TRUE,
-    k = 0L
+    k = 0L,
+    p = single_line_printer
   )
 
   warmup_state <- warmup_out$state_current_vals
@@ -1616,7 +1629,7 @@ GibbsMH_noborrow <- function(Y,
   ## ---------------------------------------------------------------
 
   if (n_chains == 1L) {
-    p <- message
+    p <- \(x)message(x, appendLF=FALSE)
     chain_out <- list(
       GibbsMH_noborrow_chain(
         input_list = input_list,
@@ -3866,7 +3879,6 @@ function(object,
          hyperparameters = NULL,
          iter = 1000,
          warmup_iter = 100,
-         refresh = 0,
          verbose = FALSE,
          max_grid = 2000,
          standardise = TRUE,
@@ -3880,8 +3892,6 @@ function(object,
          fnm_mgnl_haz_1 = "mgnl_haz_1",
          sfx = NULL,
          keep_bin_files = FALSE,
-         n_chains = 1L,
-         hpc_max_cores = 16, 
          dbg=FALSE,
          evaluate = TRUE, 
          ...){
@@ -4492,7 +4502,7 @@ set_tuning_parameters <- function(cprop_beta,
     if(tst_lvl == 3) checkmate::assert_double(out$cprop_beta_0, lower = 0.2, upper = 2.5)
 
     ## Wrap the message to 80 character lines broken at comma separators. 
-    if(verbose) {
+    if(verbose && (length(args_flld)>0)) {
       if(length(args_flld)>0) {
         message("The following tuning parameters were set to defalt: ")
         msg <-  paste(unname(apply(cbind(names(out[args_flld]), format(out[args_flld])), 1, \(x) paste(x, collapse=": "))), collapse=", ")
@@ -4597,7 +4607,7 @@ set_hyperparameters <-
     ## lines broken at comma separators.
     args_flld1 <- args_flld
     args_flld1 <- args_flld1[-which(args_flld1=="type")]
-    if(verbose) {
+    if(verbose && (length(args_flld1)>0)) {
       message("Choice of borrowing: ", model_choice , "\n")
       if(length(args_flld)>0) {
         message("The following hyperparameters were set to defalt: ")
@@ -4845,7 +4855,7 @@ function(n_cc_1, n_cc_0, n_hst, B_trt, B_x_cc, int_cc, B_x_hst, int_hst, X_fact_
     DAT_hst <- data.frame(tte=TOS0, event=D0)
     DAT_hst <- cbind(DAT_hst, DAT.X0)
 
-    names(DAT_cc)[-(1:3)] <- names(DAT_hst)[-(1:2)] <- "X_" %,% add.zeros(1:p, max(p,10))
+    names(DAT_cc)[-(1:3)] <- names(DAT_hst)[-(1:2)] <- "X_" %,% add_zeros(1:p, max(p,10))
     out <- list(DAT_cc=DAT_cc, DAT_hst=DAT_hst)
     class(out) <- "BFBHBdat"
     out 
@@ -4873,7 +4883,8 @@ GibbsMH_wborrow_chain <- function(input_list,
   tuning_parameters <- input_list$tuning_parameters
   hyperparameters <- input_list$hyperparameters
 
-  refresh <- (input_list$refresh > 0)*ceiling(iter/4)
+  verbose <- input_list$verbose
+  refresh <- verbose*ceiling(iter/4)
   max_grid <- input_list$max_grid
   CntlOnly <- input_list$CntlOnly
   G_compute <- input_list$G_compute
@@ -5169,15 +5180,16 @@ GibbsMH_wborrow_chain <- function(input_list,
   ## MCMC loop
   ## ---------------------------------------------------------------
   for (i in seq_len(iter)) {
-
     if (is_warmup) {
-      if (refresh != 0 && i %% refresh == 0)               
-        message(sprintf("Iteration: %d / %d (Warmup)", i, iter))
-    } else {
-      msg <- ""
-      if (refresh != 0 && i %% refresh == 0)
-        msg <- sprintf("Iteration: %d (Sampling chain %d)", i, k)           
+      if (verbose && ((i %% floor(iter/4))==0)) {
+        msg <- sprintf("Iteration: %s / %d (Warmup)", add_zeros(i, iter), iter)
         p(msg)
+      }
+    } else {
+      if (verbose) {
+        msg <- sprintf("Iteration: %s / %d (Sampling chain %s)", add_zeros(i, iter), iter, add_zeros(k, 99))
+        p(msg)
+      }
     }
 
     ICAR <- ICAR_calc(s = s, J = J, clam = clam)
@@ -5405,7 +5417,8 @@ GibbsMH_noborrow_chain <- function(input_list,
   tuning_parameters <- input_list$tuning_parameters
   hyperparameters <- input_list$hyperparameters
 
-  refresh <- (input_list$refresh > 0)*ceiling(iter/4)
+  verbose <- input_list$verbose
+  refresh <- verbose*ceiling(iter/4)
   max_grid <- input_list$max_grid
   CntlOnly <- input_list$CntlOnly
   G_compute <- input_list$G_compute
@@ -5625,15 +5638,16 @@ GibbsMH_noborrow_chain <- function(input_list,
   ## MCMC sampler
   ## ---------------------------------------------------------------
   for (i in seq_len(iter)) {
-
     if (is_warmup) {
-      if (refresh != 0 && i %% refresh == 0)
-        message(sprintf("Iteration: %d (Warmup)", i))
+      if (verbose && ((i %% floor(iter/4))==0)) {
+        msg <- sprintf("Iteration: %s / %d (Warmup)", add_zeros(i, iter), iter)
+        p(msg)
+      }
     } else {
-      msg <- ""
-      if (refresh != 0 && i %% refresh == 0)
-        msg <- sprintf("Iteration: %d (Sampling chain %d)", i, k)
-      p(msg)
+      if (verbose) {
+        msg <- sprintf("Iteration: %s / %d (Sampling chain %s)", add_zeros(i, iter), iter, add_zeros(k, 99))
+        p(msg)
+      }
     }
 
     ICAR <- ICAR_calc(s, J, clam_smooth)
@@ -5860,6 +5874,12 @@ GibbsMH_noborrow_chain <- function(input_list,
   )
 }
 
+single_line_printer <- function(message = "", ...) {
+  cat(message, "\n", sep = "")
+  utils::flush.console()
+  return(invisible(NULL)) # Mimics a safe return value
+}
+
 rel_eff <-
   function(wb, nb, G_compute=FALSE) {
       if(!G_compute)
@@ -5904,7 +5924,7 @@ trial_data.BFBHBdat <- function(x) x$DAT_cc
 historical_data <- function(x) UseMethod("historical_data")
 historical_data.BFBHBdat <- function(x) x$DAT_hst
 
-add.zeros <-
+add_zeros <-
 function (x, B)
 {
     do.one <- function(x, B) {
@@ -5935,6 +5955,66 @@ rnd_hex_strng <-
 if (getRversion() >= "2.15.1")
     utils::globalVariables(c("x", "y", "y_min", "y_max", "group", "iter",
                              "treatment_effect", "iteration"))
+is_hpc_environment <- function() {
+  # Common batch scheduler variables
+  scheduler_variables <- c(
+    "SLURM_JOB_ID",
+    "SLURM_CLUSTER_NAME",
+    "PBS_JOBID",
+    "PBS_ENVIRONMENT",
+    "LSB_JOBID",
+    "LSF_ENVDIR",
+    "SGE_JOB_ID",
+    "JOB_ID",
+    "COBALT_JOBID"
+  )
+
+  scheduler_detected <- any(
+    nzchar(Sys.getenv(scheduler_variables, unset = ""))
+  )
+
+  # Optional site-specific indicators
+  site_indicator <- nzchar(Sys.getenv("HPC_ENVIRONMENT", unset = "")) ||
+    nzchar(Sys.getenv("CLUSTER_NAME", unset = ""))
+
+  scheduler_detected || site_indicator
+}
+
+in_rstudio <- function()identical(Sys.getenv("RSTUDIO"), "1")
+
+is_wsl <- function() {
+
+  ans <- (!identical(Sys.info()[["sysname"]], "Linux"))
+
+  ans <- ans &&
+  file.exists("/proc/sys/fs/binfmt_misc/WSLInterop") ||
+    grepl(
+      "microsoft|wsl",
+      tolower(paste(readLines("/proc/version", warn = FALSE),
+                    collapse = " "))
+    )
+
+  ans
+}
+
+fork_is_available <- function() {
+  sysname <- Sys.info()[["sysname"]]
+
+  ## multisession by default (this includes Windows) 
+  ans <- FALSE
+  
+  # macOS supports fork
+  ans <- (identical(sysname, "Darwin")) || (identical(sysname, "Linux") && is_wsl()) || 
+         (identical(sysname, "Linux") && is_hpc_environment()) || 
+         (identical(sysname, "Linux") && !is_hpc_environment())
+
+  ans <- ans && !in_rstudio()
+
+  ans <- ans && future::supportsMulticore()
+
+  ans
+}
+
 ##  Prints package name and version on load
 .onAttach <- function(libname, pkgname)
 {
