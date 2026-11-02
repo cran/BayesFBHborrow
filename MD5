@@ -1,4 +1,4 @@
-6964600602e67ea8b5a224255fdfe07b *DESCRIPTION
+2deb150cef02c3779642553d9ca7785d *DESCRIPTION
 b96f2cf93fce6020db995b29ea5b579f *NAMESPACE
 e117c168fa6b4a34daa4de007b8abecd *R/BayesFBHborrow.R
 80b6fa7451353c3eb78e8ea73eba5a41 *README.md
@@ -6,8 +6,8 @@ e117c168fa6b4a34daa4de007b8abecd *R/BayesFBHborrow.R
 9915fc7962548f5e1809d1e5c6b3ad8c *inst/CITATION
 c9a7d280e3a6cef52272a37e99537baf *inst/doc/Using-BayesFBHborrow.R
 0c0dece5db73cc7fe63bb410ddecc83b *inst/doc/Using-BayesFBHborrow.Rnw
-a3c82c6817054e589e4091d0115e9d08 *inst/doc/Using-BayesFBHborrow.pdf
-5e5f12f03476784eb7c786bfd6d02ff6 *man/BayesFBHborrow.Rd
+f7e785eff2b54380dc11b58a2d24cd3d *inst/doc/Using-BayesFBHborrow.pdf
+ce947bacf07a3260e39fd0ce9484f67c *man/BayesFBHborrow.Rd
 687ecbe2537f67d5b91d83d94630a84e *man/Combine.Rd
 cc7afb1923194b2cd7800071c28e77d9 *man/MTE.Rd
 291233192573ff5d57a822a38034e7cb *man/coef.BayesFBHborrow.Rd
@@ -16,7 +16,7 @@ d9a842d9b8615c6372f8dcc0d5c3f431 *man/genBFBHBdat.Rd
 15383ce8d6cea3e80ade0efde1b79611 *man/historical_data.Rd
 8946a08d0cdd6d9cd14717a31ab58ff2 *man/init_lambda_hyperparameters.Rd
 ad8110657e2b695ca1313473d404f2b3 *man/plot.BayesFBHborrow.Rd
-4b690e78235d33472be73c8d1f430227 *man/read_haz_mcmc_smpls.Rd
+655bd18aa77b5f7621cccfa2ce4c252e *man/read_haz_mcmc_smpls.Rd
 293261c710ef17469d7cfb68012547fc *man/reexports.Rd
 927cdb7b78e920c9ac51bdf1b00b6c17 *man/rel_eff.Rd
 1afc2b110f4d5bfe96ca5fd49a0f5457 *man/summary.BayesFBHborrow.Rd
@@ -27,12 +27,12 @@ d5b576d4e74aac8c46842688c83c428b *man/xifinder.Rd
 cfe85ec0c9f6a337ca8b48c78f38cc63 *vignettes/Using-BayesFBHborrow.bib
 94907e10664c6d07a30735cd3304fbed *vignettes/figures/borrowing_profile-eps-converted-to.pdf
 45e1b8dff073d9ede7ec23622a57bc8f *vignettes/figures/borrowing_profile.eps
-dcb319a2c4923ce1ea6075a43dda1a90 *vignettes/figures/fig-ggcs_KM_do.pdf
-88702d53ba6edba6ff0658579cc351db *vignettes/figures/fig-p_gbcs_cndl_TrtEff_plot.pdf
-82cb3833a471d00530b38c84823e3c15 *vignettes/figures/fig-p_gbcs_cndl_haz_plot.pdf
-82cb3833a471d00530b38c84823e3c15 *vignettes/figures/fig-plot_cndl_haz_hst.pdf
-92ae1c88acfbe9761511dca1239a29f9 *vignettes/figures/fig-plot_cndl_haz_nb_wb.pdf
-d9235e08dabc68015f7df327042621db *vignettes/figures/fig-trace.pdf
+92d084a54afb216e28ffc1d69658fb47 *vignettes/figures/fig-ggcs_KM_do.pdf
+a53eceb8a04fccf30920859d52e452e7 *vignettes/figures/fig-p_gbcs_cndl_TrtEff_plot.pdf
+cce47f2e68447307e58ad9c35ec82c2a *vignettes/figures/fig-p_gbcs_cndl_haz_plot.pdf
+cce47f2e68447307e58ad9c35ec82c2a *vignettes/figures/fig-plot_cndl_haz_hst.pdf
+f1670ff1e42c5dadde20fc96137f4471 *vignettes/figures/fig-plot_cndl_haz_nb_wb.pdf
+4b017e59d9bda8f61308f44062ddddd6 *vignettes/figures/fig-trace.pdf
 b804c0bafbe829dcb9d056c46d8f32cc *vignettes/rdata/bfbhb-gbcs-exmpls.rda
 8134f4dfdbd1f530b0570de193d75377 *vignettes/rdata/bfbhb-gbcs-nb-exmpl.rda
 d2910678a1f7b6c46b94c091fcc5bb0b *vignettes/rdata/bfbhb-sim-exmpls.rda

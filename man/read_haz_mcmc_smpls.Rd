@@ -51,12 +51,20 @@
 }
 \value{
   A list with components
-    \item{cnd_haz_0}{samples of the conditional baseline hazard
-      posterior as \code{iter} by \code{max_grid} matrix}
+    \item{cnd_haz_0}{samples of the conditional baseline cumulative
+      hazard function posterior as \code{iter} by \code{max_grid} matrix}
+    \item{cnd_cumHz0}{samples of the conditional baseline hazard
+      function posterior as \code{iter} by \code{max_grid} matrix}
+    \item{lml_mgnl_surv_0}{samples of the logged negative logged
+      marginal control arm survival function posterior as \code{iter}
+      by \code{max_grid} matrix}
+    \item{lml_mgnl_surv_1}{samples of the logged negative logged
+      marginal treated arm survival function posterior as \code{iter}
+      by \code{max_grid} matrix}
     \item{mgnl_haz_0}{samples of the marginal control arm hazard
-      posterior as \code{iter} by \code{max_grid} matrix} 
+      function posterior as \code{iter} by \code{max_grid} matrix}
     \item{mgnl_haz_1}{samples of the marginal treated arm hazard
-      posterior as \code{iter} by \code{max_grid} matrix} 
+      function posterior as \code{iter} by \code{max_grid} matrix}
 }
 \references{
  Scott DAV and Lewin A (2026). Borrowing from historical

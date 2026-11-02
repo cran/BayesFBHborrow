@@ -250,10 +250,11 @@ BayesFBHborrow(formula = NULL, data, data_hist = NULL, subset, na.action,
   Darren A. V. Scott, Sophia Axillus and Grant Izmirlian
 }
 \note{
-  This runs in parallel using the future and future.apply. You need do
-  nothing special if you're on a mac, linux PC, WSL or Windows. If
-  you're working on an HPC cluster at the command line, then you must
-  request a specially enabled ineractive node via the following:
+  This runs in parallel using the packages future and future.apply. You
+  need do nothing special if you're on a mac, linux PC, WSL or
+  Windows. If you're working on an HPC cluster at the command line, then
+  you must request a specially enabled ineractive node via the
+  following:
   \preformatted{
     srun --partition=interactive \
          --nodes=1 \
@@ -279,9 +280,9 @@ BayesFBHborrow(formula = NULL, data, data_hist = NULL, subset, na.action,
   \preformatted{
     module load R-bundle-Bioconductor/3.22-foss-2025a-R-4.5.1
   }
-  Otherwise if you have in browser workbench access to the HPC
-  cluster, you will use the menu guided options to select the multiple
-  cpus (or nodes) per task. 
+  Otherwise if you have in-browser workbench access to the HPC
+  cluster, you will use the menu guided options to select the desired
+  number of cpus (or nodes) per task. 
 }
 \seealso{\code{plot}, \code{summary}, \code{update} methods for class
   \code{"BayesFBHborrow"} objects
